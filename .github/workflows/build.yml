@@ -11,15 +11,15 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: System packages
         run: |
           sudo apt-get update
           sudo apt-get install -y zstd libhidapi-hidraw0 libxkbcommon0
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .deps
           key: deps-${{ hashFiles('setup.sh') }}
@@ -29,7 +29,7 @@ jobs:
         run: make test
       - name: Firmware
         run: make firmware
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kyria_rev4_keypress_display
           path: .build/kyria_rev4_keypress_display.uf2
