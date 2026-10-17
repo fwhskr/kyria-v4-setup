@@ -1,0 +1,14 @@
+# Template: `make install-helper` fills in @ROOT@ and installs it as a
+# systemd user service that starts with the desktop session.
+[Unit]
+Description=Kyria keyboard screens: user name, keyboard language and layer names
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=@ROOT@/.venv/bin/python @ROOT@/host/kyria_display_helper.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

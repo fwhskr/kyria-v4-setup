@@ -1,0 +1,2 @@
+# Vial access for splitkb Kyria rev4 (VID 8d1d, PID 7fce)
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="8d1d", ATTRS{idProduct}=="7fce", MODE="0660", GROUP="input"

@@ -1,0 +1,13 @@
+# Fetched by setup.sh
+/.venv/
+/.deps/
+# Build and test output
+/.build/
+/firmware/*.uf2
+__pycache__/
+*.pyc
+# Editor / local
+/compile_commands.json
+/.cache/
+/.scratch/
+/docs/

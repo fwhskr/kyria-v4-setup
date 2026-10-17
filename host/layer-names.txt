@@ -1,0 +1,13 @@
+# Names the Kyria's left screen shows under the layer number.
+# One name per line, layer 0 first. Lines starting with # are notes.
+# An empty line keeps the keyboard's built-in name for that layer.
+# Up to 12 letters fit; longer names get smaller, then end in "…".
+# Changes reach the keyboard within a few seconds while the helper runs.
+Base
+Special
+Number
+Symbol
+Navi
+Bracket
+Media
+Function

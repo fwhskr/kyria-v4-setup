@@ -1,0 +1,35 @@
+# On a clean machine: fetch the pinned tools, run the tests, build the firmware.
+# Proves the repository alone is enough to rebuild what is on the keyboard.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd libhidapi-hidraw0 libxkbcommon0
+      - uses: actions/cache@v4
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('setup.sh') }}
+      - name: Setup
+        run: ./setup.sh
+      - name: Tests
+        run: make test
+      - name: Firmware
+        run: make firmware
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kyria_rev4_keypress_display
+          path: .build/kyria_rev4_keypress_display.uf2
