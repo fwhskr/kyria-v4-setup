@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@small'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:06:00Z'
+updated_date: '2026-10-25T18:46:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -49,4 +49,14 @@ Created by Nova 2026-10-25 — claimed for approved offline editor; separate nat
 Created by Nova 2026-10-25 — READY architecture at 9591904 adds isKnown/forCharacter, layoutOptions encode/decode, settings width/bit checks; primary will coordinate supplemental assertions after initial contract suite returns.
 
 Native worker ses_e8bc67fb0ffeoz1d3DMN5HzFIg active; branch studio/tests, worktree /tmp/opencode/kyria-studio-tests.
+
+Created by Nova 2026-10-25 — audited tests initial4d4f5dc, only tests and studio-test target changed; expected initial MODULE_NOT_FOUND red and syntax checks pass. Same worker continued for final contract additions/macro safety. Verified type discriminant, KS.board, qsid/settingQsids. Upstream descriptor width is optional with default1; retain real boundary tests. Final integrated behavior and echo still pending.
+
+Created by Nova 2026-10-25 — initial integrated c6a4e68 run251 tests:238PASS11FAIL2 optional-owner-file skips. Parser depth/error-offset defects confirmed direct repro, awaiting codec echo before repair. Tests worker continued for source-backed dotlessı oracle and Python ensure_ascii expectations, not weakened assertions. Current native worker same ses_e8bc67fb0ffeoz1d3DMN5HzFIg.
+
+Created by Nova 2026-10-25 — tests177f679 completed, source-backed oracle fixes and deterministic unknown-qsid fixture audited. Scratch exact production src c6a4e68:251 tests244PASS6JSON parser failures1 optional external-owner-file skip. No assertion weakened; default owner fixture unchanged. Final merge/retest pending verification results.
+
+Created by Nova 2026-10-25 — final committed tests177f679 merged into verification integration with JSON fix8142fbb; make studio-test on764c32b54007a5a06d07fa86e04abf7a172a4b4d250PASS0FAIL1optional external-file skip. Independent integrated echo active; no final criteria checked before gate/landing.
+
+Created by Nova 2026-10-25 — independent echo PASS frozen764c32b5:250PASS0FAIL1optional env-gated external export; oracle corrections independently confirmed xkb/Python. Tests saved and landed locally74a1bc99; final public push after UI completion.
 <!-- SECTION:NOTES:END -->

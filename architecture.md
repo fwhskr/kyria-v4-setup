@@ -6,7 +6,8 @@
 - Readiness: **READY** (amended 2026-10-25 after Vial research).
   - Boundaries, file ownership, module APIs and the data model are unchanged from the PROVISIONAL draft (`a5f1437`). Only data and rules were added.
   - The former research questions VERIFY-R1..R8 are resolved in LLA §9.
-  - Two non-critical labelled assumptions remain: ASSUMPTION-4 and ASSUMPTION-5. Both are isolated to legend text and one editor's checkbox labels.
+  - ASSUMPTION-4 is retired. Text macros are confirmed as US `send_string`; final addendum in LLA §4a.
+  - One non-critical labelled assumption remains: ASSUMPTION-5. It affects only the key-override editor's checkbox labels.
   - No BLOCKER.
 - Scope: Keymap Studio (`keymap-studio/`) and its publication in this repository. Firmware, host helper, tools and backups are unchanged context.
 - Subsystem LLA: [`docs/architecture/studio.md`](docs/architecture/studio.md) (READY).
@@ -49,7 +50,7 @@ Decisions confirmed by the primary (answered or defaults sufficient; no further 
 - The original app's browser storage is not migrated.
 
 Remaining labelled assumptions:
-- ASSUMPTION-4: "text" macro actions type through QMK's US-ASCII `send_string`. This affects only macro legend text, which is flagged `approximate` when unmappable.
+- ASSUMPTION-4 (retired, now FACT): "text" macro actions type through QMK's US tables (pinned `.deps/vial-qmk` `dd43959` `send_string.c`), with no guard for bytes ≥ 0x80. On the `ee` layout with the host Compose file, `~n` types `ñ`. User text is restricted to an allowlist. Imported unsafe text is kept verbatim with `W_MACRO_TEXT_UNSAFE` and a `?` approximate legend (LLA §4a).
 - ASSUMPTION-5: the key-override `*_mods` bytes use the QMK 8-bit mod-bit order (LCtl, LSft, LAlt, LGui, RCtl, RSft, RAlt, RGui = bit 0..7). The UI always shows the raw byte next to the decoded checkboxes.
 
 Non-goals (CONSTRAINT-1, CONSTRAINT-5): WebHID, device detection or reads, flashing, live sync, a locale switcher, non-Kyria boards, KLE parsing, a build pipeline, servers, network access, and a separate repository or deployment (CONSTRAINT-6).
@@ -89,7 +90,7 @@ Delivery order follows GOAL-0. First comes the character-first assignment, legen
 - FLOW-3 Export `.vil`: `vil.validate` runs first. Errors block export, including any missing Vial-required `layout`, `encoder_layout` or `layout_options`. Then `vil.encode` and download. An unedited document exports byte-identically.
 - FLOW-4 Learning PNG (GOAL-0, CAP-4): `legend.*` for the chosen layers, Canvas, `toBlob`, then download. The image is sized for on-screen viewing at 100%.
 - FLOW-5 Recovery: corrupt or old storage gives a message and the built-in default. `kyria-studio-v1` is never written.
-- FLOW-6 Publish (CONSTRAINT-6): after the echo and artist gates, commit `keymap-studio/` and a root README entry with usage and limits, then fast-forward push to `origin`. This flow is the primary's.
+- FLOW-6 Publish (CONSTRAINT-6): after the echo and artist gates, commit `keymap-studio/` (including its README with usage and limits, owned by artist), then fast-forward push to `origin`. The root `/README.md` entry is Nova-owned and already updated. This flow is the primary's.
 
 ## 6. Architecture
 
@@ -128,7 +129,7 @@ N/A for a network API, because there is no backend. The in-browser contracts are
 
 - ES2020 classic scripts for current Chromium and Firefox. No third-party code.
 - Tests: built-in `node:test`. `make studio-test` runs `node --test 'keymap-studio/tests/*.test.js'`. FACT: the bare directory form fails on Node v22.23.1. Static check: `node --check <file>`.
-- Fonts: the system font stack only.
+- Fonts: the system font stack only. No font files are added.
 - Vial compatibility baseline: vial-gui `main` at `aef8222a2d0429a183b2ed692d5f9efcfd383f08` (sources in §19).
 
 ## 9. NFRs (detail in LLA §6)
@@ -194,7 +195,7 @@ Rollback: revert the studio commits. The original HTML is untouched.
 
   Owner: L2. Trigger: a new Vial release.
 - RISK-2 (low/high): uid or unknown-field loss. Mitigation: own parser and byte-identity tests. Owner: L4.
-- RISK-3 (med/med): legends differ from what is typed (dead keys, text macros). Mitigation: xkb-derived table, the xkb dead-key list in LLA §4, and the `approximate` flag (ASSUMPTION-4). Owner: L2.
+- RISK-3 (med/med): legends differ from what is typed (dead keys, text macros). Mitigation: xkb-derived table, the xkb dead-key list in LLA §4, and the confirmed US `send_string` mapping with the `approximate` flag (LLA §4a). Owner: L2.
 - RISK-4 (low/med): storage quota or multi-tab overwrite. Mitigation: explicit error, a warning on the `storage` event, and `.vil` export as the real save.
 - RISK-5 (low/med): Vial truncates feature entries beyond the device's counts on load (FACT: `restore_key_override` keeps `x < key_override_count`). Mitigation: ops never change counts, and UI-9 states the limit.
 
@@ -240,3 +241,7 @@ Each CAP maps to `VERIFY-*` in LLA §8.
   - https://raw.githubusercontent.com/vial-kb/vial-gui/aef8222a2d0429a183b2ed692d5f9efcfd383f08/src/main/python/editor/layout_editor.py
   - https://raw.githubusercontent.com/vial-kb/vial-gui/aef8222a2d0429a183b2ed692d5f9efcfd383f08/src/main/resources/base/qmk_settings.json
   - `protocol/{tap_dance,combo,alt_repeat_key}.py` (researcher)
+- Local read-only, 2026-10-25:
+  - `/home/kris/projects/kyria/.deps/vial-qmk` at `dd43959ae5c08d8a28d38a1acf7b04e86b14a344`: `quantum/send_string/send_string.c`, `quantum/dynamic_keymap.c`
+  - `/usr/share/X11/locale/compose.dir` and `en_US.UTF-8/Compose`
+  - libxkbcommon `ee` queried through the `tools/generate_layouts.py` helpers
