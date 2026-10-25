@@ -36,19 +36,13 @@ function applyOk(input, o) {
 }
 const refuses = (input, o) => assert.throws(() => KS.workspace.apply(deepFreeze(input), o), isOpError);
 
-// settingsDescriptor: a QMK settings field has a qsid and a width; search the port without assuming nesting.
-function findSettingField(node, qsid) {
-  if (Array.isArray(node)) {
-    for (const x of node) { const f = findSettingField(x, qsid); if (f) return f; }
-    return null;
-  }
-  if (node && typeof node === 'object') {
-    if (node.qsid === qsid) return node;
-    for (const v of Object.values(node)) { const f = findSettingField(v, qsid); if (f) return f; }
-  }
-  return null;
-}
+// QMK_SETTINGS shape (LLA R3, codec): tabs[].fields[]. width is optional and defaults to 1 (Vial's default);
+// boolean fields name their bit.
+const settingFields = () => KS.QMK_SETTINGS.tabs.flatMap((t) => t.fields);
+const fieldsFor = (qsid) => settingFields().filter((f) => f.qsid === qsid);
+const widthOf = (f) => (f.width === undefined ? 1 : f.width);
 const presentQsids = (ws) => ws.doc.fields.settings.map(([q]) => q);
+const storedSetting = (ws, qsid) => ws.doc.fields.settings.find(([q]) => q === qsid)[1];
 
 describe('VERIFY-4 key.set', () => {
   it('sets one cell and leaves the input untouched', () => {
@@ -156,7 +150,7 @@ describe('VERIFY-4 tapDance, combo, keyOverride and altRepeat', () => {
   it('sets an alt-repeat entry whose options use bits 0-3', () => {
     const v = { keycode: 'KC_A', alt_keycode: 'KC_B', allowed_mods: 255, options: 15 };
     const out = applyOk(base(), op('altRepeat.set', { index: 0, value: v }));
-    assert.deepEqual(out.doc.fields.alt_repeat_key[0], v);
+    H.sameData(out.doc.fields.alt_repeat_key[0], v, 'alt-repeat entry');
   });
 
   it('refuses alt-repeat options that use bit 4 or above, and mods wider than a byte', () => {
@@ -165,42 +159,74 @@ describe('VERIFY-4 tapDance, combo, keyOverride and altRepeat', () => {
   });
 });
 
-describe('VERIFY-4 setting.set (qsid, width rules)', () => {
-  it('sets a present, described qsid to its minimum', () => {
-    const ws = base();
-    const q = presentQsids(ws).find((x) => findSettingField(KS.QMK_SETTINGS, x));
-    assert.ok(q !== undefined, 'the owner file must contain a described qsid');
-    const d = findSettingField(KS.QMK_SETTINGS, q);
-    const v = typeof d.min === 'number' ? d.min : 0;
-    const out = applyOk(ws, op('setting.set', { qsid: q, value: v }));
-    assert.deepEqual(out.doc.fields.settings.find(([k]) => k === q), [q, v]);
+describe('VERIFY-4 setting.set (qsid, width and bit rules)', () => {
+  // The first present, described, non-boolean setting of the owner file.
+  const numeric = (ws) => {
+    for (const qsid of presentQsids(ws)) {
+      const field = fieldsFor(qsid).find((f) => f.type !== 'boolean');
+      if (field) return { qsid, field };
+    }
+    assert.fail('owner file must hold a described non-boolean setting');
+  };
+
+  it('sets a described numeric qsid to its minimum', () => {
+    const { qsid, field } = numeric(base());
+    const value = field.min ?? 0;
+    const out = applyOk(base(), op('setting.set', { qsid, value }));
+    assert.equal(storedSetting(out, qsid), value);
   });
 
-  it('refuses a value wider than the field width', () => {
-    const ws = base();
-    const q = presentQsids(ws).find((x) => findSettingField(KS.QMK_SETTINGS, x));
-    const d = findSettingField(KS.QMK_SETTINGS, q);
-    assert.equal(typeof d.width, 'number', 'descriptor must carry the width');
-    refuses(ws, op('setting.set', { qsid: q, value: 2 ** (8 * d.width) }));
+  it('accepts the largest value of its width (and max), and refuses the next one', () => {
+    const { qsid, field } = numeric(base());
+    const fits = 2 ** (8 * widthOf(field)) - 1;
+    const top = typeof field.max === 'number' ? Math.min(fits, field.max) : fits;
+    const out = applyOk(base(), op('setting.set', { qsid, value: top }));
+    assert.equal(storedSetting(out, qsid), top);
+    refuses(base(), op('setting.set', { qsid, value: top + 1 }));
+  });
+
+  it('refuses a value that does not fit the width (2^(8·width))', () => {
+    const { qsid, field } = numeric(base());
+    refuses(base(), op('setting.set', { qsid, value: 2 ** (8 * widthOf(field)) }));
   });
 
   it('refuses a negative value', () => {
-    const ws = base();
-    const q = presentQsids(ws).find((x) => findSettingField(KS.QMK_SETTINGS, x));
-    refuses(ws, op('setting.set', { qsid: q, value: -1 }));
+    const { qsid } = numeric(base());
+    refuses(base(), op('setting.set', { qsid, value: -1 }));
   });
 
-  it('never adds an absent qsid', () => {
+  it('edits one named bit of a boolean field and keeps every other bit', () => {
     const ws = base();
-    const absent = [...Array(64).keys()].find((q) => !presentQsids(ws).includes(q));
-    refuses(ws, op('setting.set', { qsid: absent, value: 0 }));
+    const field = settingFields().find((f) => f.type === 'boolean' && presentQsids(ws).includes(f.qsid));
+    assert.ok(field, 'owner file must hold a described boolean setting');
+    const bit = field.bit ?? 0;
+    const before = storedSetting(ws, field.qsid);
+    const current = Math.floor(before / 2 ** bit) % 2 === 1;
+    const flipped = applyOk(ws, op('setting.set', { qsid: field.qsid, bit, value: !current }));
+    assert.equal(storedSetting(flipped, field.qsid), before + (current ? -1 : 1) * 2 ** bit);
+    const restored = applyOk(flipped, op('setting.set', { qsid: field.qsid, bit, value: current }));
+    assert.equal(storedSetting(restored, field.qsid), before);
+  });
+
+  it('refuses a bit edit on a bit that no boolean field of that qsid names', () => {
+    const ws = base();
+    const field = settingFields().find((f) => f.type === 'boolean' && presentQsids(ws).includes(f.qsid));
+    refuses(ws, op('setting.set', { qsid: field.qsid, bit: 31, value: true }));
+  });
+
+  it('never adds an absent qsid 8, by value or by bit', () => {
+    const ws = base();
+    assert.ok(!presentQsids(ws).includes(8), 'the owner file has no qsid 8');
+    refuses(ws, op('setting.set', { qsid: 8, value: 0 }));
+    refuses(ws, op('setting.set', { qsid: 8, bit: 0, value: true }));
+    refuses(ws, op('setting.set', { qsid: 8, bit: 0, value: false }));
   });
 
   it('treats a present but undescribed qsid as read-only', (t) => {
     const ws = base();
-    const q = presentQsids(ws).find((x) => !findSettingField(KS.QMK_SETTINGS, x));
-    if (q === undefined) return t.skip('every owner qsid has a descriptor');
-    refuses(ws, op('setting.set', { qsid: q, value: 0 }));
+    const qsid = presentQsids(ws).find((q) => fieldsFor(q).length === 0);
+    if (qsid === undefined) return t.skip('every owner qsid has a descriptor');
+    refuses(ws, op('setting.set', { qsid, value: 0 }));
   });
 });
 
@@ -316,10 +342,10 @@ describe('VERIFY-4 history (undo, redo, limit)', () => {
     const edited = h.present;
     assert.equal(KS.history.canUndo(h), true);
     h = KS.history.undo(h);
-    assert.deepEqual(h.present, start);
+    H.sameData(h.present, start, 'undo restores the start state');
     assert.equal(KS.history.canRedo(h), true);
     h = KS.history.redo(h);
-    assert.deepEqual(h.present, edited);
+    H.sameData(h.present, edited, 'redo restores the edit');
   });
 
   it('clears the redo future after a new commit', () => {
@@ -332,8 +358,8 @@ describe('VERIFY-4 history (undo, redo, limit)', () => {
 
   it('does nothing when undo or redo has no step', () => {
     const h = KS.history.create(base());
-    assert.deepEqual(KS.history.undo(h).present, h.present);
-    assert.deepEqual(KS.history.redo(h).present, h.present);
+    H.sameData(KS.history.undo(h).present, h.present, 'undo with no step');
+    H.sameData(KS.history.redo(h).present, h.present, 'redo with no step');
   });
 
   it('keeps only the newest states up to the limit', () => {
@@ -345,7 +371,7 @@ describe('VERIFY-4 history (undo, redo, limit)', () => {
     }
     assert.equal(h.past.length, 3);
     h = KS.history.undo(KS.history.undo(KS.history.undo(h)));
-    assert.deepEqual(h.present, states[2]);
+    H.sameData(h.present, states[2], 'oldest kept state');
     assert.equal(KS.history.canUndo(h), false);
   });
 
@@ -360,7 +386,7 @@ describe('VERIFY-4 history (undo, redo, limit)', () => {
     let h = KS.history.create(start);
     h = KS.history.commit(h, op('batch', { ops: [op('meta.layerName', { layer: 0, value: 'A' }), op('meta.layerName', { layer: 1, value: 'B' })] }));
     h = KS.history.undo(h);
-    assert.deepEqual(h.present, start);
+    H.sameData(h.present, start, 'undo restores the start state');
   });
 
   it('leaves history unchanged when a commit is refused', () => {
@@ -374,22 +400,26 @@ describe('VERIFY-4 history (undo, redo, limit)', () => {
 describe('VERIFY-4 restore (validates stored SCHEMA-WS, never throws)', () => {
   it('restores a stored workspace exactly', () => {
     const ws = base();
-    const r = KS.workspace.restore(JSON.parse(JSON.stringify(ws)));
+    const r = KS.workspace.restore(JSON.stringify(ws));
     assert.equal(r.ok, true);
-    assert.deepEqual(r.ws, ws);
+    H.sameData(r.ws, ws, 'restored workspace');
   });
 
   it('keeps a raw section through storage', () => {
     const text = vilText((o) => { o.combo = 'nope'; });
     const ws = KS.workspace.create(KS.vil.decode(text, board).doc, { filename: 'raw.vil' });
-    const r = KS.workspace.restore(JSON.parse(JSON.stringify(ws)));
+    const r = KS.workspace.restore(JSON.stringify(ws));
     assert.equal(r.ok, true);
     H.assertSameBytes(KS.vil.encode(r.ws.doc), Buffer.from(text, 'utf8'), 'raw section export');
   });
 
-  it('refuses malformed stored values without throwing', () => {
-    const cases = [null, 42, 'text', [], {}, { ...stored(), schema: 1 }, { ...stored(), schema: 3 },
-      { ...stored(), doc: { order: [], fields: {}, extra: [] } }];
+  it('refuses malformed stored text without throwing', () => {
+    const cases = [
+      null, 42, [], {}, '{', 'null', '[]', '',
+      JSON.stringify({ ...stored(), schema: 1 }),
+      JSON.stringify({ ...stored(), schema: 3 }),
+      JSON.stringify({ ...stored(), doc: { order: [], fields: {}, extra: [] } }),
+    ];
     for (const value of cases) {
       let r;
       assert.doesNotThrow(() => { r = KS.workspace.restore(value); });
@@ -401,7 +431,7 @@ describe('VERIFY-4 restore (validates stored SCHEMA-WS, never throws)', () => {
   it('refuses a key label whose key is not l:r:c, and does not pollute prototypes', () => {
     const s = stored();
     s.meta.keyLabels = JSON.parse('{"__proto__": "x"}');
-    const r = KS.workspace.restore(s);
+    const r = KS.workspace.restore(JSON.stringify(s));
     assert.equal(r.ok, false);
     assert.equal({}.x, undefined);
   });
@@ -416,7 +446,7 @@ describe('VERIFY-4 workspace creation', () => {
     assert.equal(ws.meta.layerNames.length, 8);
     assert.equal(ws.meta.layerColors.length, 8);
     for (const c of ws.meta.layerColors) assert.match(c, /^#[0-9a-f]{6}$/i);
-    assert.deepEqual(ws.meta.keyLabels, {});
+    H.sameData(ws.meta.keyLabels, {}, 'no key labels by default');
   });
 
   it('builds the default workspace with no error issues', () => {

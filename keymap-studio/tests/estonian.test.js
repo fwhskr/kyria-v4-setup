@@ -51,6 +51,12 @@ describe('VERIFY-5 four levels equal the firmware table', () => {
     assert.equal(a.levels[1], 'A');
   });
 
+  it('gives lowercase AltGr letters and uppercase Shift+AltGr letters (xkb host case)', () => {
+    const a = KS.estonian.output(0x04);
+    assert.equal(a.levels[2], 'æ');
+    assert.equal(a.levels[3], 'Æ');
+  });
+
   it('gives null where the firmware table has 0', () => {
     const j = KS.estonian.output(0x0d);
     assert.equal(j.levels[2], null);

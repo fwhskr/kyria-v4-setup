@@ -70,7 +70,7 @@ describe('VERIFY-1 one edit changes only that value', () => {
 describe('VERIFY-1 uid survives storage and history (QA-2)', () => {
   it('keeps the uid string through storage JSON', () => {
     const stored = JSON.stringify(KS.workspace.fromDefault());
-    const r = KS.workspace.restore(JSON.parse(stored));
+    const r = KS.workspace.restore(stored);
     assert.equal(r.ok, true);
     assert.equal(r.ws.doc.fields.uid, H.KNOWN_UID);
     H.assertSameBytes(KS.vil.encode(r.ws.doc), fixtureBytes, 'restored export');

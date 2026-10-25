@@ -27,6 +27,11 @@ function assertSameBytes(actualText, expectedBytes, label) {
   assert.fail(`${label}: bytes differ at ${i} (got ${actual.length} bytes, want ${expectedBytes.length})`);
 }
 
+// Compares data, not prototypes: implementations may build plain or null-prototype objects.
+function sameData(actual, expected, message) {
+  assert.equal(JSON.stringify(actual), JSON.stringify(expected), message);
+}
+
 function deepFreeze(value) {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -92,9 +97,15 @@ function estonianFirmwareTable() {
   return { byHid, rowCount: rows.length };
 }
 
-// Expected Estonian output from the firmware: plain letters are lowercase, upper levels keep the table's form.
+// Expected Estonian output from the firmware. The table stores every letter uppercase (display form), so the
+// host case rule is applied (xkb): plain and AltGr letters are lowercase, Shift and Shift+AltGr stay uppercase.
+// Non-letters are unchanged. Unicode letters (Õ, Æ, Ŋ) are included.
 function expectedLevels(levels) {
-  return levels.map((c, i) => (c === null ? null : i === 0 && /^[A-Z]$/.test(c) ? c.toLowerCase() : c));
+  return levels.map((c, i) => {
+    if (c === null) return null;
+    const lowercaseLevel = i === 0 || i === 2;
+    return lowercaseLevel && /^\p{Lu}$/u.test(c) ? c.toLowerCase() : c;
+  });
 }
 
 // Standard USB HID usage names for the typing and keypad keys the owner files use.
@@ -144,14 +155,14 @@ function ownerCodes() {
   return [...codes].sort();
 }
 
-// The Op discriminant is not fixed by the LLA; every op goes through this one helper.
+// Op discriminant: the LLA is silent; the stable codec (e8659c) uses `type`. Every op goes through this helper.
 const OP_KEY = 'type';
 const op = (name, fields = {}) => ({ [OP_KEY]: name, ...fields });
 
 module.exports = {
   REPO_DIR, FIXTURE_VIL, BACKUP_VIL, KEYMAP_DIR, LAYOUT_TABLES_H, VIAL_JSON,
   KNOWN_UID, ROUNDED_UID,
-  readBytes, readText, assertSameBytes, deepFreeze,
+  readBytes, readText, assertSameBytes, sameData, deepFreeze,
   RAW, py, fixtureObject, vilText,
   estonianFirmwareTable, expectedLevels, HID_NAME, DEAD_FACT, isDeadFact,
   ownerCodes, op,

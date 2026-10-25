@@ -201,7 +201,8 @@ describe('VERIFY-3 validate and capabilities on the owner file', () => {
     const cap = KS.vil.capabilities(decode(H.readText(H.FIXTURE_VIL)).doc);
     assert.equal(cap.source, 'file');
     assert.equal(cap.layers, oracle.layout.length);
-    assert.deepEqual(cap.matrix, { rows: 10, cols: 7 });
+    assert.equal(cap.matrix.rows, 10);
+    assert.equal(cap.matrix.cols, 7);
     assert.equal(cap.encoders, oracle.encoder_layout[0].length);
     assert.equal(cap.macros, oracle.macro.length);
     assert.equal(cap.macroBytes, null);
@@ -220,6 +221,28 @@ describe('VERIFY-3 validate and capabilities on the owner file', () => {
     assert.ok(cap.vialRequiredMissing.includes('encoder_layout'));
     assert.equal(cap.editable.combo, false);
     assert.equal(cap.editable.macro, true);
+  });
+});
+
+describe('VERIFY-3 raw required sections block export', () => {
+  // A raw (non-conforming) required section is invalid, so it must block export even though decode kept it verbatim.
+  it('blocks export when encoder_layout is a raw section', () => {
+    const r = decode(vilOf((o) => { o.encoder_layout = 'nope'; }));
+    assert.ok(allErrors(r).length > 0);
+  });
+
+  it('blocks export when a raw encoder pair sits inside encoder_layout', () => {
+    const r = decode(vilOf((o) => { o.encoder_layout[0][0] = ['KC_A']; }));
+    assert.ok(allErrors(r).length > 0);
+  });
+
+  it('blocks export when layout_options is a raw section', () => {
+    const r = decode(vilOf((o) => { o.layout_options = 'nope'; }));
+    assert.ok(allErrors(r).length > 0);
+  });
+
+  it('does not block the owner fixture, whose required sections are valid', () => {
+    assert.deepEqual(allErrors(decode(H.readText(H.FIXTURE_VIL))), []);
   });
 });
 
@@ -250,6 +273,12 @@ describe('VERIFY-3 layout options packing (vial.json labels, R5)', () => {
       const values = packed.decode(v, labels).map((o) => o.value);
       assert.equal(packed.encode(values, labels), v, `round trip of ${v}`);
     }
+  });
+
+  it('encodes the owner values 0, 10 and 15 from their decoded options', () => {
+    assert.equal(packed.encode([0, 0, 0, 0], labels), 0);
+    assert.equal(packed.encode([1, 0, 1, 0], labels), 10);
+    assert.equal(packed.encode([1, 1, 1, 1], labels), 15);
   });
 
   it('never silently encodes an out-of-range select choice', () => {

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const KS = require('./load-core.js');
 const H = require('./helpers.js');
 
-const { parse, format, check, isKnown, byId, catalog, categories, forCharacter, KeycodeError } = KS.keycodes;
+const { parse, format, check, isKnown, byId, catalog, categories, forCharacter, macroActions, KeycodeError } = KS.keycodes;
 const isError = (i) => i.severity === 'error';
 const errorsOf = (text, limits) => check(text, limits).filter(isError);
 
@@ -120,7 +120,9 @@ describe('VERIFY-6 parse and format', () => {
   });
 
   it('keeps an unknown code verbatim as raw', () => {
-    assert.deepEqual(parse('KC_FOO'), { k: 'raw', text: 'KC_FOO' });
+    const r = parse('KC_FOO');
+    assert.equal(r.k, 'raw');
+    assert.equal(r.text, 'KC_FOO');
   });
 
   it('never throws on junk input', () => {
@@ -144,20 +146,32 @@ describe('VERIFY-6 parse and format', () => {
 
 // Oracle: which ways the firmware table types a character. Plain text is lowercase; shift and altgr codes wrap KC_x.
 const TYPING = ['plain', 'shift', 'altgr', 'shiftAltgr'];
-const WRAP = [(n) => n, (n) => `LSFT(${n})`, (n) => `RALT(${n})`, () => '*'];
+const WRAP = [(n) => n, (n) => `LSFT(${n})`, (n) => `RALT(${n})`];
+// LLA §4 forCharacter: shiftAltgr is the catalog's right Shift+Alt wrap, offered only when format() gives a known code.
+function shiftAltgrCode(name) {
+  let code;
+  try {
+    code = format({ k: 'mods', mods: { shift: true, alt: true, right: true }, inner: { k: 'basic', id: name } });
+  } catch {
+    return null;
+  }
+  return isKnown(code) ? code : null;
+}
 function oracleOptions(ch) {
   const out = [];
   for (const [hid, row] of H.estonianFirmwareTable().byHid) {
     const name = H.HID_NAME.get(hid);
     H.expectedLevels(row).forEach((c, i) => {
       if (c !== ch) return;
-      out.push(key({ code: WRAP[i](name), level: TYPING[i], hid, dead: H.isDeadFact(hid, i), keypad: name.startsWith('KC_KP_') }));
+      const code = i === 3 ? shiftAltgrCode(name) : WRAP[i](name);
+      if (code === null) return;
+      out.push(key({ code, level: TYPING[i], hid, dead: H.isDeadFact(hid, i), keypad: name.startsWith('KC_KP_') }));
     });
   }
   return out;
 }
 const key = (o) => `${o.code}|${o.level}|${o.hid}|${o.dead}|${o.keypad}`;
-const actualKey = (o) => key({ ...o, code: o.level === 'shiftAltgr' ? '*' : o.code });
+const actualKey = (o) => key(o);
 
 describe('VERIFY-6 forCharacter (GOAL-0)', () => {
   it('lists every typed way for every firmware character, matching the table', () => {
@@ -227,5 +241,79 @@ describe('VERIFY-6 forCharacter (GOAL-0)', () => {
     const r = forCharacter('中');
     assert.deepEqual(r.direct, []);
     assert.equal(r.sequence, null);
+  });
+});
+
+describe('VERIFY-6 isKnown (qmk_id, alias, compound)', () => {
+  it('knows the canonical name and its alias', () => {
+    assert.equal(isKnown('KC_NONUS_BSLASH'), true);
+    assert.equal(isKnown('KC_NUBS'), true);
+  });
+
+  it('does not know the invalid name KC_NONUS_BACKSLASH or a typo', () => {
+    assert.equal(isKnown('KC_NONUS_BACKSLASH'), false);
+    assert.equal(isKnown('KC_AA'), false);
+  });
+
+  it('knows a compound form whose inner code is known, and not one whose inner code is not', () => {
+    assert.equal(isKnown('RALT(KC_4)'), true);
+    assert.equal(isKnown('RALT(KC_NONUS_BACKSLASH)'), false);
+  });
+});
+
+describe('VERIFY-6 macroActions (basic keycodes only, LLA §4)', () => {
+  const basic = /^KC_[A-Z0-9_]+$/;
+  const MODS = /^KC_(L|R)(SHIFT|ALT|CTRL|GUI)$|^KC_RALT$/;
+
+  it('taps a plain key', () => {
+    assert.deepEqual(macroActions('KC_A'), [['tap', 'KC_A']]);
+  });
+
+  it('holds Shift around a shifted key', () => {
+    assert.deepEqual(macroActions('LSFT(KC_GRAVE)'), [['down', 'KC_LSHIFT'], ['tap', 'KC_GRAVE'], ['up', 'KC_LSHIFT']]);
+  });
+
+  it('holds AltGr around an AltGr key', () => {
+    assert.deepEqual(macroActions('RALT(KC_E)'), [['down', 'KC_RALT'], ['tap', 'KC_E'], ['up', 'KC_RALT']]);
+  });
+
+  it('builds ñ as the dead tilde then KC_N, from the forCharacter sequence', () => {
+    const seq = forCharacter('ñ').sequence;
+    assert.deepEqual(seq, ['LSFT(KC_GRAVE)', 'KC_N']);
+    assert.deepEqual([...macroActions(seq[0]), ...macroActions(seq[1])],
+      [['down', 'KC_LSHIFT'], ['tap', 'KC_GRAVE'], ['up', 'KC_LSHIFT'], ['tap', 'KC_N']]);
+  });
+
+  it('builds é as the dead acute then KC_E', () => {
+    const seq = forCharacter('é').sequence;
+    assert.deepEqual([...macroActions(seq[0]), ...macroActions(seq[1])], [['tap', 'KC_EQUAL'], ['tap', 'KC_E']]);
+  });
+
+  it('emits only down, tap and up with basic keycodes for every direct code of sample characters', () => {
+    const bad = [];
+    for (const c of ['ö', '%', '€', '´', 'õ', '@', 'A']) {
+      for (const o of forCharacter(c).direct) {
+        if (o.level === 'shiftAltgr') continue;
+        for (const [kind, k] of macroActions(o.code)) {
+          if (!['down', 'tap', 'up'].includes(kind) || !(basic.test(k) || MODS.test(k))) bad.push([c, o.code, kind, k]);
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
+  });
+
+  it('nests Shift and AltGr around a Shift+AltGr key when the catalog offers that code', (t) => {
+    const codes = [];
+    for (const hid of H.estonianFirmwareTable().byHid.keys()) {
+      const code = shiftAltgrCode(H.HID_NAME.get(hid));
+      if (code !== null) codes.push(code);
+    }
+    if (codes.length === 0) return t.skip('catalog has no right Shift+Alt wrap, so forCharacter offers no Shift+AltGr code');
+    for (const code of codes) {
+      const acts = macroActions(code);
+      assert.deepEqual(acts.map((a) => a[0]), ['down', 'down', 'tap', 'up', 'up'], code);
+      assert.ok(acts.some(([k, m]) => k === 'down' && m === 'KC_RALT'), code);
+      assert.match(acts[0][1], /^KC_(L|R)SHIFT$/, code);
+    }
   });
 });

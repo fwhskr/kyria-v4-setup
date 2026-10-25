@@ -94,7 +94,7 @@ describe('VERIFY-6 every typing key matches the firmware table', () => {
       });
     }
     assert.deepEqual(mismatches, []);
-    assert.deepEqual(levelsOfName('KC_A'), ['a', 'A', 'Æ', 'Æ']);
+    assert.deepEqual(levelsOfName('KC_A'), ['a', 'A', 'æ', 'Æ']);
   });
 
   it('has an accessible name for every owner-file code', () => {
@@ -179,6 +179,51 @@ describe('VERIFY-6 macro text (dead-key composition, ~n gives ñ)', () => {
   });
 
   it('is complete and empty for an empty macro', () => {
-    assert.deepEqual(KS.legend.macroText([]), { text: '', complete: true });
+    const r = KS.legend.macroText([]);
+    assert.equal(r.text, '');
+    assert.equal(r.complete, true);
+  });
+});
+
+describe('VERIFY-6 macroText examples (LLA §4a and API-LEG)', () => {
+  // Each US input gives the Estonian output on the ee layout, with dead accents composed by NFC.
+  const EXAMPLES = [
+    ['~n', 'ñ'],
+    ['=e', 'é'],
+    ['`s', 'š'],
+    ['@', '"'],
+    ['[', 'ü'],
+    [';', 'ö'],
+    ['~ ', '~'],
+  ];
+  for (const [input, want] of EXAMPLES) {
+    it(`types ${JSON.stringify(input)} as ${JSON.stringify(want)}, complete`, () => {
+      const r = KS.legend.macroText([['text', input]]);
+      assert.equal(r.text, want);
+      assert.equal(r.complete, true);
+    });
+  }
+
+  it('shows õ, which is outside the allowlist, as ? and marks the macro incomplete', () => {
+    const r = KS.legend.macroText([['text', 'õ']]);
+    assert.equal(r.text, '?');
+    assert.equal(r.complete, false);
+  });
+
+  it('marks a trailing dead accent incomplete', () => {
+    assert.equal(KS.legend.macroText([['text', '~']]).complete, false);
+  });
+
+  it('tracks Shift from down and up actions', () => {
+    const r = KS.legend.macroText([['down', 'KC_LSHIFT'], ['tap', 'KC_5'], ['up', 'KC_LSHIFT']]);
+    assert.equal(r.text, '%');
+    assert.equal(r.complete, true);
+  });
+
+  it('shows control characters as their key symbols', () => {
+    assert.equal(KS.legend.macroText([['text', '\b']]).text, '⌫');
+    assert.equal(KS.legend.macroText([['text', '\t']]).text, '⇥');
+    assert.equal(KS.legend.macroText([['text', '\n']]).text, '⏎');
+    assert.equal(KS.legend.macroText([['text', '\x1b']]).text, 'Esc');
   });
 });
