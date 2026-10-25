@@ -72,6 +72,12 @@
           if (section === 'alt_repeat_key' && (value.allowed_mods > 255 || value.options > 15)) fail('E_VALUE','Alt-repeat bit field is out of range');
           if (section === 'tap_dance' && value[4] > 65535) fail('E_VALUE','Tapping term is out of range');
           if (section === 'macro') value.forEach((action,i) => {
+            if (action[0] === 'text' && !(old[i]?.[0] === 'text' && action[1] === old[i][1])) {
+              const issues = KS.vil.checkMacroText(action[1]);
+              if (issues.length) fail('E_MACRO_TEXT',issues[0].message);
+            }
+            // Vial encodes two nonzero base-255 bytes, not an unsigned 16-bit delay.
+            if (action[0] === 'delay' && !(old[i]?.[0] === 'delay' && action[1] === old[i][1]) && (action[1] > 65024 || !Number.isInteger(f.vial_protocol) || f.vial_protocol < 2)) fail('E_MACRO_DELAY','Vial delays require protocol 2 or later and 0–65024 ms');
             if (['tap','down','up'].includes(action[0])) action.slice(1).forEach((c,j) => code(c,f,old[i]?.[j + 1]));
           });
           else if (section === 'combo' || section === 'tap_dance') value.slice(0,section === 'combo' ? 5 : 4).forEach((c,i) => code(c,f,old[i]));

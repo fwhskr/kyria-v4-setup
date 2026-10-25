@@ -19,6 +19,17 @@
   const cell = v => typeof v === 'string' || Number.isSafeInteger(v);
   const uint = v => Number.isSafeInteger(v) && v >= 0;
   const uid = v => typeof v === 'string' && /^(0|[1-9][0-9]{0,19})$/.test(v) && (v.length < 20 || v <= '18446744073709551615');
+  function checkMacroText(s) {
+    const message = 'Firmware text macros send US-ASCII only; add Estonian characters with the character picker';
+    if (typeof s !== 'string') return [issue('error','E_MACRO_TEXT','',message)];
+    const issues = []; let offset = 0;
+    for (const ch of s) {
+      const n = ch.codePointAt(0);
+      if (![8,9,10,27].includes(n) && (n < 32 || n > 126)) issues.push(issue('error','E_MACRO_TEXT',`[${offset}]`,message));
+      offset += ch.length;
+    }
+    return issues;
+  }
   function itemOK(section,v) {
     if (section === 'macro') return Array.isArray(v) && v.every(a => Array.isArray(a) && (
       (a[0] === 'text' && a.length === 2 && typeof a[1] === 'string') ||
@@ -87,8 +98,20 @@
       const validRow = r => Array.isArray(r) && r.length === board.matrix.cols && r.every(v => cell(v) || (raw(v) && v.$raw.t === 'n'));
       if (layout.some(l => !Array.isArray(l) || l.length !== board.matrix.rows || !l.every(validRow))) issues.push(issue('error','E_MATRIX','layout','Expected the Kyria matrix'));
     }
-    if (own(f,'encoder_layout') && !raw(f.encoder_layout) && (!Array.isArray(f.encoder_layout) || !Array.isArray(layout) || f.encoder_layout.length !== layout.length || f.encoder_layout.some(l => !Array.isArray(l) || l.length !== f.encoder_layout[0].length || l.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(v => cell(v) || raw(v)))))) issues.push(issue('error','E_ENCODER','encoder_layout','Invalid per-layer encoder pairs'));
-    if (own(f,'layout_options') && !raw(f.layout_options) && !uint(f.layout_options)) issues.push(issue('error','E_LAYOUT_OPTIONS','layout_options','Invalid layout options'));
+    if (own(f,'encoder_layout')) {
+      const encoders = f.encoder_layout;
+      const validPair = p => Array.isArray(p) && p.length === 2 && p.every(v => cell(v) || (raw(v) && v.$raw.t === 'n'));
+      const validLayer = l => Array.isArray(l) && l.length === encoders[0].length && l.every(validPair);
+      if (!Array.isArray(encoders) || !Array.isArray(layout) || encoders.length !== layout.length || !encoders.every(validLayer)) issues.push(issue('error','E_ENCODER','encoder_layout','Invalid per-layer encoder pairs'));
+    }
+    if (own(f,'layout_options') && (!uint(f.layout_options) || f.layout_options > 4294967295)) issues.push(issue('error','E_LAYOUT_OPTIONS','layout_options','Invalid unsigned 32-bit layout options'));
+    if (Array.isArray(f.macro)) f.macro.forEach((actions,i) => {
+      if (!Array.isArray(actions)) return;
+      actions.forEach((a,j) => {
+        if (a[0] === 'text' && checkMacroText(a[1]).length) issues.push(issue('warning','W_MACRO_TEXT_UNSAFE',`macro[${i}][${j}][1]`,'Firmware text macros send US-ASCII only; these characters type unexpected keys or nothing'));
+        if (a[0] === 'delay' && (a[1] > 65024 || !uint(f.vial_protocol) || f.vial_protocol < 2)) issues.push(issue('warning','W_MACRO_DELAY_UNSAFE',`macro[${i}][${j}][1]`,'Vial delays require protocol 2 or later and 0–65024 ms; imported value preserved'));
+      });
+    });
     if (KS.keycodes && KS.keycodes.isKnown) {
       const visit = (v,path) => {
         if (raw(v)) return;
@@ -120,7 +143,7 @@
   function capabilities(doc) {
     const f = doc.fields, count = k => Array.isArray(f[k]) ? f[k].length : 0, editable = {};
     for (const k of known) editable[k] = own(f,k) && !raw(f[k]);
-    return {source:'file',layers:count('layout'),matrix:{rows:f.layout.length ? f.layout[0].length : 0,cols:f.layout.length && f.layout[0].length ? f.layout[0][0].length : 0},encoders:count('encoder_layout') ? f.encoder_layout[0].length : 0,macros:count('macro'),macroBytes:null,tapDance:count('tap_dance'),combos:count('combo'),keyOverrides:count('key_override'),altRepeat:count('alt_repeat_key'),settingQsids:Array.isArray(f.settings) ? f.settings.map(x => x[0]) : [],layoutOptions:uint(f.layout_options),vialRequiredMissing:['layout','encoder_layout','layout_options'].filter(k => !own(f,k)),editable};
+    return {source:'file',layers:count('layout'),matrix:{rows:f.layout.length ? f.layout[0].length : 0,cols:f.layout.length && f.layout[0].length ? f.layout[0][0].length : 0},encoders:count('encoder_layout') ? f.encoder_layout[0].length : 0,macros:count('macro'),macroBytes:null,tapDance:count('tap_dance'),combos:count('combo'),keyOverrides:count('key_override'),altRepeat:count('alt_repeat_key'),settingQsids:Array.isArray(f.settings) ? f.settings.map(x => x[0]) : [],layoutOptions:uint(f.layout_options) && f.layout_options <= 4294967295,vialRequiredMissing:['layout','encoder_layout','layout_options'].filter(k => !own(f,k)),editable};
   }
   function optionSpecs(labels) {
     return labels.map(label => typeof label === 'string' ? {label,kind:'bool',bits:1} : {label:label[0],kind:'select',choices:label.slice(1),bits:Math.ceil(Math.log2(label.length - 1))});
@@ -140,5 +163,5 @@
       },0);
     }
   };
-  KS.vil = {decode,encode,validate,capabilities,layoutOptions};
+  KS.vil = {decode,encode,validate,capabilities,layoutOptions,checkMacroText};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
