@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@artist'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:06:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -46,4 +46,8 @@ Implement exclusively assigned files against studio LLA contracts; run bounded s
 
 <!-- SECTION:NOTES:BEGIN -->
 Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+
+Created by Nova 2026-10-25 — READY architecture at 9591904 prioritizes Estonian character-first picker/search and readable typing-learning PNG. Root README entry already written by Nova, no artist ownership there needed. Source code/doc APIs isolate future transport; publication in existing origin authorized after verification.
+
+Native artist ses_e8bd2c3f3ffeIkJJIjITof52zY active in design phase; branch studio/ui, worktree /tmp/opencode/kyria-studio-ui. Continue same session for implementation when design returns.
 <!-- SECTION:NOTES:END -->

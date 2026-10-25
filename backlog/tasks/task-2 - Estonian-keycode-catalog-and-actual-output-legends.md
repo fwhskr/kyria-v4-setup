@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:06:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -45,4 +45,8 @@ Implement exclusively assigned files against studio LLA contracts; run bounded s
 
 <!-- SECTION:NOTES:BEGIN -->
 Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+
+Created by Nova 2026-10-25 — READY architecture addendum at 9591904: keycodes.isKnown and forCharacter direct/reverse/dead-sequence lookup; character-first UX priority. Encoder0 CW1 CCW. Unknown imported names warn, user typos refused.
+
+Native worker ses_e8bc67fdaffebxmpeaf4JzVeMH active; branch studio/keys, worktree /tmp/opencode/kyria-studio-keys.
 <!-- SECTION:NOTES:END -->

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@small'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:06:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -45,4 +45,8 @@ Implement exclusively assigned files against studio LLA contracts; run bounded s
 
 <!-- SECTION:NOTES:BEGIN -->
 Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+
+Created by Nova 2026-10-25 — READY architecture at 9591904 adds isKnown/forCharacter, layoutOptions encode/decode, settings width/bit checks; primary will coordinate supplemental assertions after initial contract suite returns.
+
+Native worker ses_e8bc67fb0ffeoz1d3DMN5HzFIg active; branch studio/tests, worktree /tmp/opencode/kyria-studio-tests.
 <!-- SECTION:NOTES:END -->

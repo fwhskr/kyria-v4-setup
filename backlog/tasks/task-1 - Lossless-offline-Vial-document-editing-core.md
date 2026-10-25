@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@engineer'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:06:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -45,4 +45,8 @@ Implement exclusively assigned files against studio LLA contracts; run bounded s
 
 <!-- SECTION:NOTES:BEGIN -->
 Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+
+Created by Nova 2026-10-25 — architecture READY at 9591904 now landed. Addendum: KS.QMK_SETTINGS data from Vial qmk_settings.json, settings widths/bits, vil.layoutOptions.decode/encode high-to-low packing. Core contract unchanged otherwise; missing encoder/options load with issues and block export (E_VIAL_REQUIRED).
+
+Native worker ses_e8bc6801fffef8YGUadiBYxKBl active; branch studio/codec, worktree /tmp/opencode/kyria-studio-codec.
 <!-- SECTION:NOTES:END -->
