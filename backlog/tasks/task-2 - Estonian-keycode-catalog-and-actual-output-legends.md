@@ -1,10 +1,11 @@
 ---
 id: TASK-2
 title: Estonian keycode catalog and actual-output legends
-status: To Do
+status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -33,3 +34,15 @@ Verification: bounded Node parse/format/output checks and affected node --check;
 - [ ] #2 Composed modifiers, mod-tap, layer-tap, layer functions, macros and tap dance parse and render real outputs; invalid typed names are rejected without changing imported unknown codes
 - [ ] #3 Legends expose hold behavior, inheritance, macro approximations and unknown fallback honestly
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Implement exclusively assigned files against studio LLA contracts; run bounded self-checks, commit stable inputs; primary integrates and applies required verification.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+<!-- SECTION:NOTES:END -->

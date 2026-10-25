@@ -1,10 +1,11 @@
 ---
 id: TASK-4
 title: Contract tests for lossless Vial and Estonian editing
-status: To Do
+status: In Progress
 assignee:
   - '@small'
 created_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -33,3 +34,15 @@ Verification: tests fail meaningfully before implementation and pass against fin
 - [ ] #2 Tests cover immutable operations, atomic batch errors, history bounds, storage validation and all feature schemas
 - [ ] #3 Tests independently check Estonian levels/dead keys and canonical keycode/legend behavior; studio-test runs in existing Node without installation
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Implement exclusively assigned files against studio LLA contracts; run bounded self-checks, commit stable inputs; primary integrates and applies required verification.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+<!-- SECTION:NOTES:END -->

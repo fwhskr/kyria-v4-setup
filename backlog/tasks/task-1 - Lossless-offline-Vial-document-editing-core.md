@@ -1,10 +1,11 @@
 ---
 id: TASK-1
 title: Lossless offline Vial document editing core
-status: To Do
+status: In Progress
 assignee:
   - '@engineer'
 created_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -33,3 +34,15 @@ Verification: bounded node behavior/static checks; independent echo against exac
 - [ ] #2 Every supported edit operation is atomic, immutable and count preserving, with working undo/redo and storage recovery
 - [ ] #3 Original keymap is bundled without UID rounding; all 60 cells and original geometry remain accessible
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Implement exclusively assigned files against studio LLA contracts; run bounded self-checks, commit stable inputs; primary integrates and applies required verification.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+<!-- SECTION:NOTES:END -->

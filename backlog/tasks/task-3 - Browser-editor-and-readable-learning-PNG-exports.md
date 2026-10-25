@@ -1,10 +1,11 @@
 ---
 id: TASK-3
 title: Browser editor and readable learning PNG exports
-status: To Do
+status: In Progress
 assignee:
   - '@artist'
 created_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -34,3 +35,15 @@ Verification: artist functional and visual self-checks in installed Chromium and
 - [ ] #3 Export .vil and readable current/all-layer PNG showing actual Estonian outputs, legible holds/modifiers and supplementary matrix/encoder mappings
 - [ ] #4 Functional and visual checks pass with no network dependency; README explains browser use, Vial import and limits for public users
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Implement exclusively assigned files against studio LLA contracts; run bounded self-checks, commit stable inputs; primary integrates and applies required verification.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+<!-- SECTION:NOTES:END -->
