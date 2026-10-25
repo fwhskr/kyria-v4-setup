@@ -3,6 +3,7 @@
 Status: approved scope, 2026-10-25.
 
 ## Goals
+- GOAL-0 (primary purpose, owner clarification 2026-10-25): Vial lacks an Estonian keymap, making key assignment difficult. Make assignment character-first with actual Estonian outputs, and provide a readable exported reference image the owner can keep on screen while learning to type on the Kyria. These two workflows outrank breadth of Vial-style features. A full Vial replacement is a future direction, not the current delivery target.
 - GOAL-1: Improve the owner's browser keymap app in /home/kris/projects/kyria/keymap-studio without modifying the original /home/kris/Documents/kyria-keymap-studio.html.
 - GOAL-2: Prepare Vial files offline for later import in actual Vial.
 
