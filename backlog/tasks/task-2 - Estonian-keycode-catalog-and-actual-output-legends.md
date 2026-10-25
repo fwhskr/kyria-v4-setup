@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:06:00Z'
+updated_date: '2026-10-25T18:10:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -49,4 +49,6 @@ Created by Nova 2026-10-25 — claimed for approved offline editor; separate nat
 Created by Nova 2026-10-25 — READY architecture addendum at 9591904: keycodes.isKnown and forCharacter direct/reverse/dead-sequence lookup; character-first UX priority. Encoder0 CW1 CCW. Unknown imported names warn, user typos refused.
 
 Native worker ses_e8bc67fdaffebxmpeaf4JzVeMH active; branch studio/keys, worktree /tmp/opencode/kyria-studio-keys.
+
+Created by Nova 2026-10-25 — architect confirmed text macro ~n types ñ on standard Estonian dead-key layout. US LUT -> Estonian output -> compose; nonASCII/control unsafe imported macro should show approximate ?; no hardcoded macro index.
 <!-- SECTION:NOTES:END -->
