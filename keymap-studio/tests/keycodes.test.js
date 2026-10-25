@@ -161,7 +161,7 @@ function oracleOptions(ch) {
   const out = [];
   for (const [hid, row] of H.estonianFirmwareTable().byHid) {
     const name = H.HID_NAME.get(hid);
-    H.expectedLevels(row).forEach((c, i) => {
+    H.expectedLevels(row, hid).forEach((c, i) => {
       if (c !== ch) return;
       const code = i === 3 ? shiftAltgrCode(name) : WRAP[i](name);
       if (code === null) return;
@@ -176,8 +176,8 @@ const actualKey = (o) => key(o);
 describe('VERIFY-6 forCharacter (GOAL-0)', () => {
   it('lists every typed way for every firmware character, matching the table', () => {
     const chars = new Set();
-    for (const row of H.estonianFirmwareTable().byHid.values()) {
-      H.expectedLevels(row).forEach((c) => { if (c !== null) chars.add(c); });
+    for (const [hid, row] of H.estonianFirmwareTable().byHid) {
+      H.expectedLevels(row, hid).forEach((c) => { if (c !== null) chars.add(c); });
     }
     const mismatches = [];
     for (const ch of chars) {

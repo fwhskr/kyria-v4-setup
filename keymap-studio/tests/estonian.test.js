@@ -37,7 +37,7 @@ describe('VERIFY-5 four levels equal the firmware table', () => {
     const mismatches = [];
     for (const hid of hids) {
       const got = KS.estonian.output(hid);
-      const want = H.expectedLevels(table.byHid.get(hid));
+      const want = H.expectedLevels(table.byHid.get(hid), hid);
       if (JSON.stringify(got && got.levels) !== JSON.stringify(want)) {
         mismatches.push({ hid: `0x${hid.toString(16)}`, got: got && got.levels, want });
       }

@@ -55,8 +55,10 @@ describe('VERIFY-3 imported unsafe macro text is kept, warned, and exported verb
 
   it('warns W_MACRO_TEXT_UNSAFE for an imported õ without blocking export', () => {
     const text = vilText((o) => { o.macro[0] = [['text', 'õ']]; });
+    assert.ok(text.includes('"\\u00f5"'), 'fixture must be Python ensure_ascii, not raw UTF-8');
     const r = unsafeDoc('õ');
     assert.equal(r.ok, true);
+    assert.equal(JSON.parse(KS.vil.encode(r.doc)).macro[0][0][1], 'õ');
     const warn = r.issues.find((i) => i.code === 'W_MACRO_TEXT_UNSAFE');
     assert.ok(warn, 'W_MACRO_TEXT_UNSAFE expected');
     assert.equal(warn.severity, 'warning');
@@ -72,7 +74,9 @@ describe('VERIFY-3 imported unsafe macro text is kept, warned, and exported verb
   it('keeps unsafe text in the export after an unrelated key edit', () => {
     const ws = KS.workspace.create(unsafeDoc('õ').doc, { filename: 'unsafe.vil' });
     const out = KS.workspace.apply(deepFreeze(ws), op('key.set', { layer: 0, row: 0, col: 1, code: 'KC_Y' }));
-    assert.ok(KS.vil.encode(out.doc).includes('"macro": [[["text", "õ"]]'));
+    const exported = KS.vil.encode(out.doc);
+    assert.ok(exported.includes('"macro": [[["text", "\\u00f5"]]'));
+    assert.equal(JSON.parse(exported).macro[0][0][1], 'õ');
   });
 });
 
