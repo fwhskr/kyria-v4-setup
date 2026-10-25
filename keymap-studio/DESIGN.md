@@ -17,7 +17,7 @@ These supersede the Stage 1 text where they differ.
 - **Unknown codes**: amber dotted keycap, `Unknown` tag and the raw code in `--font-code`, wrapped up to three lines.
 - **Encoders**: `encoder_layout` pair index 0 is clockwise, 1 counter-clockwise (LLA R6). Dials show `↺ CCW` left and `↻ CW` right. On the board, encoders and module buttons are always editable and marked `(off)` when the file's layout options say they are not fitted; the PNG leaves those out and says so in its notes. Layout options are never rebased (`0` stays `0`).
 - **Macros**: text steps accept only 0x08, 0x09, 0x0A, 0x1B, 0x20–0x7E (`vil.checkMacroText`); imported unsafe text is kept and flagged. Characters go in through **Character or key**, which inserts `keycodes.macroActions` (basic keycodes with explicit Shift/AltGr down and up), never compound codes. Composed letters not on the layout (`é`) can become a two-press macro only in an empty macro slot.
-- **Reference image**: one layer is 1920 × 1080 at 1× by default (readable at 100 % on a common screen), with a 2× option; several layers use two columns at k = 64. Text minimum on every image is 0.19 × the main key width (QA-5); key legends stay ≥ 0.20 k.
+- **Reference image** (owner correction, 2026-10-25: "It has to contain all the layers, not just the visible layer"): every saved PNG holds all layers of the file, including layers that do nothing (the built-in file's all-transparent `7 Spare`), whatever layer is on screen or selected. Header **Save image** and the view's **Save PNG** save the same file, `kyria-all-layers.png`. There is no layer filter; layer filters saved by older versions (`sheet.mode`, `sheet.layers`, `sheet.includeEmpty`) are ignored on restore and dropped on the next UI save, and only the pixel size is kept. Layers sit in two columns at k = 64: the built-in eight-layer keymap is 2590 × 2545 at 1× (default) and 5180 × 5090 with the 2× option. The 1920 × 1080 one-layer layout is used only when the opened file has a single layer. Text minimum on every image is 0.19 × the main key width (QA-5); key legends stay ≥ 0.20 k.
 - **Storage**: `kyria-keymap-studio/v2` holds the workspace (validated with `workspace.restore`); `kyria-keymap-studio/v2/ui` holds view state and the export baseline. `kyria-studio-v1` is never read or written.
 - **CSP**: `index.html` carries a strict meta Content-Security-Policy (`script-src 'self'`, `connect-src 'none'`, no inline script); it works from `file://` in Chromium and Firefox.
 
@@ -263,19 +263,27 @@ All are master-detail: list on the left (320 px, rows 40 px, selected row `--sur
 - **Key overrides**: sentence summary ("Shift + Backspace sends Delete on all layers"). Detail: enabled switch; trigger modifiers (8 toggles, LCtrl … RGui, labelled Ctrl, Shift, Alt, AltGr, Super per side) and trigger key; replacement; layers as toggles for the file's layers, with "Layers 8–15 stay as in the file" when hidden bits are set; negative and suppressed modifiers; the six Vial options in plain language from vial-gui `editor/key_override.py`.
 - **Alt repeat**: enabled, last key, alt key, allowed modifiers, the three options. Present because the file contains `alt_repeat_key` (question for the primary in section 15).
 - **Settings**: Vial's QMK settings groups (Magic, Grave Escape, Tap-Hold, Auto Shift, Combo, One Shot Keys, Mouse keys) with Vial's titles, showing only `qsid` values present in the file; bit fields as checkboxes, integers as number inputs with min, max and "ms" where the setting is a time. "Layout options" group from the bundled definition labels (`Soldered encoder left`, `Halcyon module left: None or Encoder`, …), editing `layout_options`. A file without settings shows "This file has no QMK settings." and nothing else.
-- **Reference sheet**: options column (300 px) and a live canvas preview scaled to fit, with "Show at 100 %" to inspect real pixel size. Options: Sheet: All layers or This layer; Include layers that do nothing (default off); Save PNG. Errors from the renderer appear here.
+- **Reference sheet**: options column (300 px) and a live canvas preview of all layers scaled to fit, with "Show at 100 %" to inspect real pixel size. Options: Pixel size, "Normal (1×): 2590 × 2545 pixels" or "Sharp (2×): 5180 × 5090 pixels, for high-resolution screens" (sizes from the live 1× render, here the built-in file); Save PNG; hint "Saves kyria-all-layers.png with all 8 layers, including layers that do nothing." There is no layer choice. Errors from the renderer appear here.
 
 ## 9. Reference sheet (PNG)
 
-Rendered with Canvas 2D directly from the shared legend runs (no SVG-to-image step), after `document.fonts.load` confirms every weight used. Exported at 2× device scale.
+Rendered with Canvas 2D directly from the shared legend runs (no SVG-to-image step), after `document.fonts.load` confirms every weight used. Saved at 1× by default; **Sharp (2×)** doubles both dimensions.
 
-### This layer (16:9)
+### Every export: all layers in one PNG
+
+Owner correction (2026-10-25): the image always contains every layer of the file, including layers that do nothing (all transparent or disabled), never only the layer on screen. The current layer, the selected key and any layer filter saved by an older version have no effect on the output; there is no option to leave layers out.
+
+Two columns of layer panels at k = 64 (pitch ≈ 70), panel ≈ 1240 × 510 at 1× (taller when a layer has notes), each titled `<n>  <layer name>` in the layer colour with how the layer is reached; then one "How to read" strip and the combo notes. A layer that does nothing draws its pass-through keys dashed and says "No key on any layer switches to this layer." The built-in keymap has eight layers in four rows, `0 Base` … `7 Spare`: 2590 × 2545 at 1×, 5180 × 5090 at 2×. No text is under 0.19 × 64 ≈ 12.2 px at 1×, and key legends stay ≥ 0.20 of their key (AP-5). Relative to sheet width that is 1.7 × the original's hold text: 1.6 × from the text-to-key ratio, 1.07 × from tighter packing.
+
+### Fallback: a file with a single layer (16:9)
+
+Used only when the opened file has exactly one layer, so the image still holds all of that file's layers. It is never offered as a choice for files with more layers.
 
 ```
-1920 × 1080 at 1×, 3840 × 2160 PNG
+1920 × 1080 at 1×, 3840 × 2160 at 2×
 ┌──────────────────────────────────────────────────────────────────────────────┐ 48 margin
-│ 6  Function                                  Kyria rev4, Estonian layout     │ title 26/700 in layer colour
-│ Reached by holding Function (right thumb)     kriskyria.vil, 25 Oct 2026      │ 16/400 muted
+│ 0  Base                                      Kyria rev4, Estonian layout     │ title 26/700 in layer colour
+│ Active when no other layer is held.           kriskyria.vil, 25 Oct 2026      │ 16/400 muted
 │                                                                              │
 │          board, k = 96, pitch 104, ≈ 1774 × 600                              │
 │                                                                              │
@@ -286,13 +294,9 @@ Rendered with Canvas 2D directly from the shared legend runs (no SVG-to-image st
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-At k = 96 the smallest text is 19.2 px at 1× (38.4 px in the PNG). Fitted to a 1920 × 1080 screen, the hold band text stays ≥ 19 px; the original's was 3 px. When notes exceed the space, the sheet grows taller rather than shrinking text.
+At k = 96 the smallest text is 19.2 px at 1× (38.4 px at 2×). Fitted to a 1920 × 1080 screen, the hold band text stays ≥ 19 px; the original's was 3 px. When notes exceed the space, the sheet grows taller rather than shrinking text.
 
-### All layers (one PNG)
-
-Two columns of layer panels at k = 64 (pitch ≈ 70), panel ≈ 1260 × 500 at 1×, plus one panel for "How to read" and the combo, macro and tap-dance notes. Layers that do nothing (all transparent or disabled) are left out unless included. Seven layers: ≈ 2600 × 2100 at 1×, ≈ 5200 × 4200 PNG. Smallest text 12.8 px at 1×. Relative to sheet width that is 1.7 × the original's hold text: 1.6 × from the text-to-key ratio, 1.07 × from tighter packing.
-
-File names: `kyria-<layer-name>.png`, `kyria-all-layers.png`, slugified ASCII.
+File name: always `kyria-all-layers.png`.
 
 ## 10. Flows and states
 
@@ -306,7 +310,7 @@ File names: `kyria-<layer-name>.png`, `kyria-all-layers.png`, slugified ASCII.
 | Issues | Top-bar button only when issues exist ("2 issues"). Drawer lists errors then warnings, each with "Show", which navigates and selects the target. |
 | Autosave | Status line right: "Saved in this browser". Failure is persistent, not a toast: banner "This browser isn't saving your changes (storage is full or blocked). Export your .vil to keep them." |
 | Revert | File menu "Revert to opened file…" with confirmation naming the file. |
-| PNG export | Pending: Save PNG button busy, label "Saving…". Fonts not loaded: "The sheet fonts didn't load, so the image wasn't saved. Reload the page and try again." Canvas too large: "Your browser couldn't create an image this large. Try "This layer"." Success: "Saved kyria-all-layers.png." |
+| PNG export | Pending: Save PNG button busy, label "Saving…". Fonts not loaded: "The sheet fonts didn't load, so the image wasn't saved. Reload the page and try again." Canvas too large: "Your browser couldn't create an image this large. Choose Normal (1×) under Reference image and try again." Success: "Saved kyria-all-layers.png (2590 × 2545 pixels)." The header **Save image** button saves the same all-layer PNG. |
 | Empty feature list | Never shown empty: entry counts come from the file. A file without that feature: "This file has no tap dances." |
 
 No keyboard connection UI exists: no connect button, no device status (CONSTRAINT-1).
@@ -399,20 +403,20 @@ Load from `file://` with no console errors and no non-`file:`/`data:`/`blob:` re
 | AP-2 | Every legend run's box lies inside its keycap zone (key-local coordinates via `getBBox`), no two runs intersect |
 | AP-3 | Computed font size of every keycap run ≥ 0.20 k; corner legends ≥ 0.25 k; single main glyphs 0.44 k (dead-key accents 0.50 k) |
 | AP-4 | Text colour pairs from computed styles meet section 4 ratios (≥ 4.5:1 text, ≥ 3:1 control boundaries) |
-| AP-5 | Sheet text runs (from `KyriaStudio.app.sheet.render({log})`): every run ≥ 0.19 × main key width; key runs ≥ 0.20 k, inside their key, and the typed character largest; one layer is 1920 × 1080 at 1× unless notes need more height |
+| AP-5 | Sheet text runs (from `KyriaStudio.app.sheet.render({log})`): every run ≥ 0.19 × main key width; key runs ≥ 0.20 k, inside their key, and the typed character largest; the default render holds every layer (`sheet.imageLayers()` is `0 … n-1`; built-in file: eight panel titles `0 Base` … `7 Spare`, 2590 × 2545 at 1×), unchanged by the current layer or older saved sheet options; a one-layer file is 1920 × 1080 at 1× unless notes need more height |
 | AP-6 | An Unknown code renders the raw code text and the "Unknown" tag; no keycap with a non-`KC_NO` code renders zero text runs |
 | AP-7 | `elementFromPoint` at each key centre, including 15°, 30° and 45° thumbs, returns that key |
 | AP-8 | No page-level horizontal overflow at 1920, 1440, 1280, 1024, 390 widths; board frame scrolls instead |
 | AP-9 | Every focusable control shows a `:focus-visible` outline ≥ 2 px; tab order follows the landmark order; dialogs trap and restore focus |
 | AP-10 | axe-core: no serious or critical violations on each view |
 | AP-11 | Reduced motion: no transition longer than 0 ms on keycaps; forced colours: keycap outlines visible (Chromium `forcedColors` emulation) |
-| AP-12 | Rendered screenshots of every view and both sheets inspected against the wireframes above |
+| AP-12 | Rendered screenshots of every view, the all-layer sheet and the one-layer-file fallback inspected against the wireframes above |
 
 Viewport and state matrix: 1920 × 1080, 1440 × 900, 1280 × 800 (editing targets); 1024 × 768 (supported, board scrolls); 390 × 844 (reflow sanity); 200 % zoom at 1440. States: no selection, key selected, Unknown key, transparent layer, layer key, encoder selected, each feature view with used and unused entries, issues present, storage failure, import error dialog, export blocked, PNG pending and failure. Theme: dark only, plus forced colours.
 
 ## 15. Questions
 
-Resolved 2026-10-25 (primary, no further owner questions): D1 follows the legend model (lowercase main, capital only as Shift output); D2 every AltGr output; D3 system fonts; D4 no batch per-layer export; D5 English; D6 Super where the legend model says so; D7 rotated. The original questions:
+Resolved 2026-10-25 (primary, no further owner questions): D1 follows the legend model (lowercase main, capital only as Shift output); D2 every AltGr output; D3 system fonts; D4 no batch per-layer export, and by the owner's later correction no single-layer or chosen-layer export either: every PNG holds all layers (section 9); D5 English; D6 Super where the legend model says so; D7 rotated. The original questions:
 
 - D1. Letters on keys and in the sheet: capitals like keycaps and the Kyria's own screen, or lowercase as now? Default: capitals.
 - D2. AltGr characters in key corners: Estonian essentials (number row, punctuation, š ž €) or every AltGr character xkb defines (Æ, ß, “, → …)? Default: essentials. The picker always shows all.
@@ -456,6 +460,6 @@ For the primary and architect (not look and feel): include the Alt repeat editor
 1. Font fails to load under some `file://` policy: legends would re-measure in a fallback font and overflow. Sheet export refuses with the specified error; the board falls back and AP-2 catches overflow in tests.
 2. Long owner-chosen layer names (≤ 35 characters): fit cascade ends in `Ln` on keys, full name in the tab and accessible name.
 3. Large UID loses precision through `JSON.parse`: flagged to the architect (section 12), verified by the export round-trip check.
-4. Very large all-layers canvas on a low-memory browser: caught `toBlob` failure with the "Try This layer" message.
+4. Very large all-layers canvas on a low-memory browser (most likely at 2×): caught `toBlob` failure with the "Choose Normal (1×)" message; layers are never dropped to make it fit.
 5. Picker click with no selected key: status message, no silent no-op.
 6. Transparent key on a layer reached through another layer: resolver contract returns the real source; the qualifier names it when it differs.
