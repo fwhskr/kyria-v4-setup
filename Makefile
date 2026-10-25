@@ -13,7 +13,7 @@ UDEV    := /etc/udev/rules.d/99-vial-kyria.rules
 TEST_FLAGS := -std=c11 -Wall -Wextra -Werror -Itests -I$(QMK_DIR)/quantum -I$(KEYMAP) \
 	-Ifirmware/users/halcyon_modules/splitkb -Ifirmware/users/halcyon_modules/splitkb/hlc_tft_display
 
-.PHONY: help setup test assets preview firmware release flash backup check-keyboard restore \
+.PHONY: help setup test studio-test assets preview firmware release flash backup check-keyboard restore \
 	install-helper uninstall-helper udev clangd clean
 
 help:
@@ -47,6 +47,10 @@ $(BUILD)/display_test: tests/display_test.c tests/*.h $(KEYMAP)/*.c $(KEYMAP)/*.
 
 test: $(BUILD)/key_text_test $(BUILD)/display_test
 	bash tests/run.sh "$(BUILD)"
+
+# Keymap Studio: node:test only, no npm. The directory form of --test fails on Node 22.
+studio-test:
+	node --test 'keymap-studio/tests/*.test.js'
 
 assets: | $(PY)
 	cd tools && $(PY) generate_smooth.py
