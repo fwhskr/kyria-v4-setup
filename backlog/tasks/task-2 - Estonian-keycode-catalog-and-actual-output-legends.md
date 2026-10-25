@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:26:00Z'
+updated_date: '2026-10-25T18:53:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -53,4 +53,8 @@ Native worker ses_e8bc67fdaffebxmpeaf4JzVeMH active; branch studio/keys, worktre
 Created by Nova 2026-10-25 — architect confirmed text macro ~n types ñ on standard Estonian dead-key layout. US LUT -> Estonian output -> compose; nonASCII/control unsafe imported macro should show approximate ?; no hardcoded macro index.
 
 Created by Nova 2026-10-25 — audited389f0b5 four owned files, clean and no diff whitespace errors. Integrated with codec/tests in c6a4e6842afbc444e09f67f7cec927542f01fb27 on studio/integration (not canonical). Echo ses_e8bb015ebffe4pvAYVdi407BxL active isolated exact revision for keycode/legend behavior. Real xkb dotlessı at HID0x0c ShiftAltGr must not be changed to firmware uppercase displayI.
+
+Created by Nova 2026-10-25 — key echo at c6a4e68 PASS97probes; final corrected tests recheck active same echo ses_e8bb015ebffe4pvAYVdi407BxL on4594bbe. Narrow release-critical compatibility question identified during artifact audit: source comments claim RSA/SAGR/RCS/RCG wrappers accepted, tests author earlier reported no RSA in Vial. Researcher ses_e8bd4da49ffe0PI0txoA41BKHW active exact-upstream function registry check; no speculative change before evidence.
+
+Created by Nova 2026-10-25 — final frozen4594bbe echo115/115PASS0skip, syntax4filesPASS, semantic code identical prior97probe revision (catalog comments only). Narrow upstream wrapper registry compatibility research remains release gate; no task Done until reconciled and final publication.
 <!-- SECTION:NOTES:END -->
