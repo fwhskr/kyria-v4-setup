@@ -1,6 +1,6 @@
 # Keymap Studio LLA
 
-Status: **READY** (amended 2026-10-25 after Vial research; first draft PROVISIONAL at `a5f1437`).
+Status: **READY** (amended 2026-10-25 after Vial research; first draft PROVISIONAL at `a5f1437`). This is the final contract addendum: text macros (§4a) and README ownership. Additive helpers only: `vil.checkMacroText`, `keycodes.macroActions`.
 - Parent: [`architecture.md`](../../architecture.md).
 - Canonical brief: `/home/kris/projects/kyria/docs/product/brief.md` (`main` `d585697`).
 - Compatibility baseline: vial-gui `main` `aef8222a2d0429a183b2ed692d5f9efcfd383f08` (HLA §19).
@@ -46,6 +46,7 @@ Rules (ADR-S1):
 - Script order: `src/data/*`, `src/core/json.js`, `keycodes.js`, `vil.js`, `legend.js`, `workspace.js`, `history.js`, then `src/app/*`, with `main.js` last.
 - Core and data files never touch `document`, `localStorage`, `fetch`, `Date.now` or `Math.random`. They must `require()` in Node; `tests/load-core.js` loads them all.
 - No network of any kind: no `fetch`, XHR, remote URL, CDN, web font or `default.json` fallback.
+- No font files. UI and PNG use the system font stack only.
 
 ## 3. Lanes, file ownership and dependencies
 
@@ -53,12 +54,12 @@ Rules (ADR-S1):
 | --- | --- | --- | --- |
 | L1 core-codec | engineer or general | `src/core/json.js`, `vil.js`, `workspace.js`, `history.js`; `src/data/board-kyria.js`, `default-vil.js`, `qmk-settings.js` | none |
 | L2 core-keys | general | `src/core/keycodes.js`, `legend.js`; `src/data/estonian.js`, `keycode-catalog.js` | SCHEMA-DOC/SCHEMA-WS shapes (fixed here) |
-| L3 app | artist | `index.html`, `DESIGN.md`, `README.md`, `styles/**`, `src/app/**`, and the Keymap Studio row/section in root `/README.md` | APIs; integrates when L1 and L2 land |
+| L3 app | artist | `index.html`, `DESIGN.md`, `README.md`, `styles/**`, `src/app/**` (only `keymap-studio/README.md`, never root `/README.md`) | APIs; integrates when L1 and L2 land |
 | L4 tests | general or small | `tests/**`, plus one `studio-test` target in `/Makefile`: `node --test 'keymap-studio/tests/*.test.js'` (the directory form fails on Node 22) | contracts only |
 
 - Paths are relative to `keymap-studio/` unless they start with `/`.
 - No lane edits another lane's files. Implementers never edit tests to pass, and L4 never edits code. Disputes go to architect.
-- Untouchable: `/home/kris/Documents/*`, `host/layer-names.txt`, firmware, tools, backups, CI and the Backlog board.
+- Untouchable: `/home/kris/Documents/*`, `host/layer-names.txt`, firmware, tools, backups, CI, the Backlog board, and root `/README.md` (Nova-owned, already updated).
 - Fixture: `tests/fixtures/kriskyria.vil` is a byte-exact copy of `/home/kris/Documents/kriskyria.vil` (sha256 `2187ec80…2899`).
 - Tests read `backups/kyriav4current.vil` and `firmware/keyboards/splitkb/halcyon/kyria/keymaps/keypress_hlc/layout_tables.h` and `vial.json` in place.
 
@@ -91,6 +92,7 @@ validate(doc, board) → Issue[]             // any 'error' blocks export
 capabilities(doc) → Capabilities
 layoutOptions.decode(value:number, labels) → {label, kind:'bool'|'select', choices?:string[], value:number}[]
 layoutOptions.encode(values:number[], labels) → number
+checkMacroText(s:string) → Issue[]         // additive: TEXT allowlist (§4a); E_MACRO_TEXT per offending character
 ```
 
 Decode rules:
@@ -105,6 +107,7 @@ Decode rules:
   - a non-conforming optional section becomes `{$raw: Node}` with `W_RAW_SECTION`;
   - unknown top-level members go to `doc.extra` with `I_UNKNOWN_FIELD`;
   - in all cases the data is exported verbatim.
+- **Unsafe macro text.** An imported `['text', s]` where `s` has any character outside the TEXT allowlist (§4a) gives `W_MACRO_TEXT_UNSAFE`: "Firmware text macros send US-ASCII only; these characters type unexpected keys or nothing". The string is kept verbatim and is not an export blocker.
 - **Unknown keycodes.** A key cell string that is not catalog-known (`keycodes.isKnown`) gives `W_UNKNOWN_KEYCODE`: "Vial will load this as KC_NO". Examples: `KC_NONUS_BACKSLASH` and typos. The string is kept verbatim and is not an export blocker.
 - **Layout options.** Packing (FACT, `layout_editor.py`):
   - Options are concatenated as a bit string with label[0] most significant.
@@ -129,7 +132,8 @@ history.commit(h, op) / undo(h) / redo(h) → History;  canUndo(h) / canRedo(h) 
 
 Op rules:
 - **Counts never change.** No op adds or removes layers, macros, tap dances, combos, overrides, alt-repeat entries, encoders or setting qsids. Targeting an absent, raw or out-of-range item gives `OpError`.
-- **Keycode values.** In `key.set`, `encoder.set`, tap dance, combo, override and alt-repeat values, every keycode must pass `keycodes.check` with no errors. This includes catalog-known names (QA-8). The single exception is re-setting the identical imported string, so undo can restore raw imported codes.
+- **Macro text.** In `macro.set`, every `text` string must be within the TEXT allowlist (§4a), else `OpError E_MACRO_TEXT`. The only exception is an identical imported string at the same position, so undo and unrelated edits never drop imported data.
+- **Keycode values.** In `key.set`, `encoder.set`, macro `tap`/`down`/`up`, tap dance, combo, override and alt-repeat values, every keycode must pass `keycodes.check` with no errors. This includes catalog-known names (QA-8). The single exception is re-setting the identical imported string, so undo can restore raw imported codes.
 - **`setting.set`** is allowed only for a qsid present in the file and described in `KS.QMK_SETTINGS`.
   - The value must fit the field width (`0 .. 2^(8·width) − 1`) and any `min`/`max`.
   - Boolean fields edit their `bit` within the qsid's integer.
@@ -152,6 +156,7 @@ format(action) → string                   // canonical Vial qmk_id; throws KS.
 isKnown(cell) → boolean                   // qmk_id or alias in catalog, incl. compound forms with known inner codes
 check(text, {layers, macros, tapDances}) → Issue[]   // user input: grammar + catalog membership + index ranges
 forCharacter(ch:string) → {direct:CharOption[], sequence:string[]|null}
+macroActions(code:string) → MacroAction[]  // additive: basic-keycode down/tap/up form of a forCharacter code
 CharOption = {code:string, level:'plain'|'shift'|'altgr'|'shiftAltgr', hid:number, dead:boolean, keypad:boolean}
 byId(idOrAlias) → CatalogEntry|null;  catalog: CatalogEntry[];  categories: {id,label,ids}[]
 CatalogEntry = {id, aliases:string[], label, category, hid?:number}
@@ -178,7 +183,27 @@ Catalog rules:
   - altgr: `RALT(KC_x)`
   - shiftAltgr: the catalog's right Shift+Alt wrap of `KC_x` (`format` of `{shift, alt, right}`), omitted if the catalog has none.
 - **Dead keys.** `dead:true` marks a dead accent.
-- **Sequences.** `sequence` is non-null only for a precomposed letter not directly on the layout. It holds `[deadKeyCode, baseCode]` from the NFD decomposition, for example `é` → dead acute + `KC_E`. The UI may offer it as a macro of two `tap` actions, but only if a free (all-empty) macro slot exists.
+- **Sequences.** `sequence` is non-null only for a precomposed letter not directly on the layout. It holds `[deadKeyCode, baseCode]` from the NFD decomposition, for example `é` → dead acute + `KC_E`.
+- **Macro insertion (additive helper).** `macroActions(code) → MacroAction[]` turns a `forCharacter` code into basic-keycode actions only:
+  - plain: `['tap', KC_x]`
+  - shift: `['down','KC_LSHIFT'], ['tap',KC_x], ['up','KC_LSHIFT']`
+  - AltGr: the same with `KC_RALT`
+  - Shift+AltGr: both modifiers nested
+
+  The character-first macro builder (L3) inserts these, never `text` and never compound codes inside macros. Example: `ñ` → `LSFT(KC_GRAVE)` actions, then `['tap','KC_N']`. A sequence goes into a macro only if a free (all-empty) macro slot exists.
+
+### 4a. Text macros (FACT; final)
+
+- **Firmware.** The pinned `.deps/vial-qmk` (`dd43959`), `quantum/dynamic_keymap.c` `dynamic_keymap_macro_send` (lines 245–343), sends `text` bytes through `send_string_with_delay`, then `send_char_with_delay` (`quantum/send_string/send_string.c` 216–255).
+  - That function uses the US tables: `ascii_to_keycode_lut[128]` plus the shift, AltGr and dead bit tables.
+  - The AltGr and dead tables are all zero.
+  - The owner's firmware overrides none of them.
+- **No guard.** Nothing checks for bytes ≥ 0x80. They read past the end of the tables and send unpredictable keys. Byte 0x01 is `SS_QMK_PREFIX`, and most other control bytes map to no key.
+- **TEXT allowlist** (user input): 0x08, 0x09, 0x0A, 0x1B and 0x20–0x7E. Anything else is refused with "Firmware text macros send US-ASCII only; add Estonian characters with the character picker". This check is `vil.checkMacroText(s) → Issue[]` (additive, L1). It is used by `workspace.apply` and by the L3 editor for live feedback.
+- **Host result.** On the `ee` layout (default variant, with dead keys) and the host Compose file (`LANG=en_US.UTF-8`, `/usr/share/X11/locale/en_US.UTF-8/Compose:479` `<dead_tilde> <n> : "ñ"`), `~n` types **ñ**:
+  - `~` is LSFT+`KC_GRV` (US table), which is `dead_tilde` on `ee` (xkb, §4 dead list).
+  - Then `n` composes with it.
+  - On `ee(nodeadkeys)` the result would be `~n`. The studio targets `ee` only (CONSTRAINT-2).
 
 ### API-LEG — `KS.legend` (L2)
 
@@ -186,7 +211,7 @@ Catalog rules:
 describe(cell, ws) → Legend
 at(ws, layer, row, col) → Legend          // KC_TRNS → layer 0 value, inherited:true (ADR-S7)
 encoder(ws, layer, index, dir) → Legend   // dir 0 = clockwise, 1 = counter-clockwise (FACT, research)
-macroText(actions) → {text:string, complete:boolean}   // ASSUMPTION-4; dead-key NFC composition
+macroText(actions) → {text:string, complete:boolean}   // §4a US send_string + Estonian output; complete:false ⇔ legend approximate
 Legend = {code, inherited:boolean, fromLayer:number,
   kind:'char'|'shortcut'|'action'|'layer'|'modifier'|'macro'|'tapdance'|'none'|'raw',
   main:string, shift?:string, altgr?:string, shiftAltgr?:string, dead?:boolean,
@@ -206,6 +231,25 @@ Legend semantics:
 - **Hold.** Mod-tap and layer-tap fill `hold`.
 - **Detail.** Tap dance `detail` lists tap, hold, double and tap-hold.
 - **Unknown codes.** `unknown:true` marks a code that is not catalog-known.
+- **`macroText` rules** (§4a).
+  - **Text characters.** Each allowlisted text character maps through the US table to a (HID, Shift) pair, then to the Estonian level output. Controls show as `⌫`, `⇥`, `⏎` and `Esc`.
+  - **Key actions.** `tap`/`down`/`up` keycodes produce output through `describe`, with Shift and AltGr state tracked from `down`/`up`.
+  - **Dead accents.** A dead accent combines with the next output:
+    - next is Space: the accent itself;
+    - a precomposed letter exists (NFC): that letter;
+    - otherwise: the accent plus the letter, with `complete:false`.
+    - A trailing dead accent also gives `complete:false`.
+  - **Unsafe characters.** Each character outside the allowlist renders as `?` and sets `complete:false`.
+  - **Approximate.** The macro legend sets `approximate = !complete`.
+  - **Examples (tests):**
+    - `~n` → `ñ`
+    - `=e` → `é`
+    - `` `s `` → `š`
+    - `@` → `"`
+    - `[` → `ü`
+    - `;` → `ö`
+    - `~ ` → `~`
+    - `õ` → `?` (approximate)
 
 `KS.estonian.output(hid) → {levels:[plain,shift,altgr,shiftAltgr], dead:[4×bool]} | null`:
 - Levels are real characters with lowercase letters, and `null` where `layout_tables.h` has 0.
@@ -295,7 +339,7 @@ Residual risks are stated in UI-9:
 | UI-6 | Learning PNG: current layer / chosen layers / all, spare toggle, encoder and module rows when non-empty | loading, success, error |
 | UI-7 | Issues list. Export is blocked on errors (incl. `E_VIAL_REQUIRED`). Rounded-uid warning with explicit restore | |
 | UI-8 | Autosave/recovery messages; reset to default with confirm | |
-| UI-9 | Limits: offline file editor; capabilities from the file; nothing sent to the keyboard; Vial loads unknown names as KC_NO, drops entries beyond device counts, and checks macro memory | |
+| UI-9 | Limits: offline file editor; capabilities from the file; nothing sent to the keyboard; Vial loads unknown names as KC_NO, drops entries beyond device counts, and checks macro memory; text macros are US-ASCII only (Estonian characters go in as key taps) | |
 
 Traceability:
 - GOAL-0 → UI-4, UI-6, QA-0, QA-5, VERIFY-6, VERIFY-7.
@@ -308,16 +352,16 @@ Traceability:
 - CONSTRAINT-2 → API-KC.
 - CONSTRAINT-3 → §3, VERIFY-8.
 - CONSTRAINT-4 → Capabilities, UI-9.
-- CONSTRAINT-6 → README, VERIFY-9.
+- CONSTRAINT-6 → `keymap-studio/README.md` (L3) and root README (Nova), VERIFY-9.
 
 | VERIFY | Covers | Lane / gate |
 | --- | --- | --- |
 | VERIFY-1 | QA-1, QA-2: round-trip fixtures; uid survives storage JSON and history | L4 node, echo |
 | VERIFY-2 | `json.parse` errors (line/col), depth, duplicates, Python-style escapes | L4 node, echo |
-| VERIFY-3 | Decode issues: matrix, size, raw items/sections, rounded uid, extras, `E_VIAL_REQUIRED`, `W_UNKNOWN_KEYCODE` (for example `KC_NONUS_BACKSLASH`) | L4 node, echo |
-| VERIFY-4 | Every Op: pure, count-preserving, OpError cases, settings width/bit/absent-qsid rules, layout-options packing (owner values 0, 10, 15 with the definition labels), undo/redo/limit | L4 node, echo |
+| VERIFY-3 | Decode issues: matrix, size, raw items/sections, rounded uid, extras, `E_VIAL_REQUIRED`, `W_UNKNOWN_KEYCODE` (for example `KC_NONUS_BACKSLASH`), `W_MACRO_TEXT_UNSAFE` (imported `õ` kept verbatim and byte-identical on export) | L4 node, echo |
+| VERIFY-4 | Every Op: pure, count-preserving, OpError cases, settings width/bit/absent-qsid rules, layout-options packing (owner values 0, 10, 15 with the definition labels), `macro.set` TEXT allowlist (`E_MACRO_TEXT` for 0x01, 0x7F, `õ`; the identical imported string is allowed), `vil.checkMacroText`, undo/redo/limit | L4 node, echo |
 | VERIFY-5 | `estonian.js` levels equal the `layout_tables.h` Estonian block under uppercase display mapping; dead flags equal §4 exactly | L4 node, echo |
-| VERIFY-6 | Owner-file names are `isKnown`; `check` rejects typos and `KC_NONUS_BACKSLASH`; `format` emits `KC_NONUS_BSLASH`; `forCharacter` for `õ ä ö ü š ž € @ % < ´ é`; legends for the §4 examples; encoder dir labels | L4 node, echo |
+| VERIFY-6 | Owner-file names are `isKnown`; `check` rejects typos and `KC_NONUS_BACKSLASH`; `format` emits `KC_NONUS_BSLASH`; `forCharacter` for `õ ä ö ü š ž € @ % < ´ é`; legends for the §4 examples; `macroText` examples in API-LEG; `macroActions` basic-keycode output; encoder dir labels | L4 node, echo |
 | VERIFY-7 | UI-1..UI-9 functional, QA-0, QA-3..QA-6, PNG readability, both browsers over `file://` | L3 artist |
 | VERIFY-8 | Original HTML sha256 unchanged; `host/layer-names.txt` untouched | primary audit |
 | VERIFY-9 | README usage and limits present; the published revision equals the verified one | primary before push |
@@ -333,7 +377,7 @@ Traceability:
 | R5 | `layout_options`: label[0] is most significant. Bool = 1 bit; select = `(n−1).bit_length()`. Preserve imported values; no rebase of the default `0`. | research, `layout_editor.py` |
 | R6 | `encoder_layout` pair: index 0 = CW, 1 = CCW. **This reverses the first draft's default.** | research, `keyboard_comm.py` |
 | R7 | A uid mismatch is a warning only in Vial. The studio warns. | research |
-| R8 | Text macros use US-ASCII `send_string`. Still ASSUMPTION-4, affecting only the legend `approximate` flag. | open, non-critical |
+| R8 | Text macros use the US `send_string` tables, with no guard for bytes ≥ 0x80. `~n` gives `ñ` on `ee`. Rules in §4a. ASSUMPTION-4 is retired. | research + architect read of pinned `.deps/vial-qmk` `dd43959`, local xkb/Compose |
 
 ## 10. ADRs
 
