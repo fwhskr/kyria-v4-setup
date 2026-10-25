@@ -1,59 +1,71 @@
 # Keymap Studio LLA
 
-Status: **PROVISIONAL**. Parent: [`architecture.md`](../../architecture.md) (HLA). Brief: [`docs/product/brief.md`](../product/brief.md).
-- READY: §2 layout and load rules, §3 lanes and ownership, §4 API signatures and invariants, §5 data model shapes, §6 to §8.
-- PROVISIONAL: the Vial details listed in §9 (`VERIFY-R*`). Lanes implement these as data tables, so researcher answers change data, not APIs.
+Status: **READY** (amended 2026-10-25 after Vial research; first draft PROVISIONAL at `a5f1437`).
+- Parent: [`architecture.md`](../../architecture.md).
+- Canonical brief: `/home/kris/projects/kyria/docs/product/brief.md` (`main` `d585697`).
+- Compatibility baseline: vial-gui `main` `aef8222a2d0429a183b2ed692d5f9efcfd383f08` (HLA §19).
+- APIs and shapes from the first draft are kept. This amendment adds rules, data tables, `keycodes.forCharacter`, `keycodes.isKnown` and `vil.layoutOptions`.
 
 ## 1. Parent alignment
 
-The parent HLA defines goals, constraints and ADR adoption. This LLA specializes them and makes no deviation. The original `/home/kris/Documents/kyria-keymap-studio.html` is read-only reference material. Only its geometry and palette/name defaults are reused (line 9 geometry, line 11 `palette` and `initialNames`).
+This LLA specializes the HLA with no deviation.
+- GOAL-0 sets priority: character-first assignment (UI-4, API-KC `forCharacter`) and the learning PNG (UI-6) come before the feature editors.
+- The original `/home/kris/Documents/kyria-keymap-studio.html` is read-only reference. The studio reuses only:
+  - its geometry (line 9);
+  - its palette and layer names (line 11);
+  - its embedded default, which equals `kriskyria.vil`.
 
 ## 2. Directory layout and loading
 
 ```
 keymap-studio/
-  index.html                 app shell; <script src> tags in the fixed order below; no inline app logic
-  DESIGN.md                  artist: visual system, UI-* state grid
-  README.md                  artist: how to open/use offline, limits
+  index.html                  app shell; <script src> tags in the fixed order below; no inline app logic
+  DESIGN.md                   artist: visual system, UI-* state grid
+  README.md                   artist: browser usage, scope and compatibility limits (CONSTRAINT-6)
   styles/studio.css
-  src/data/board-kyria.js    BoardProfile (core-codec)
-  src/data/default-vil.js    KS.DEFAULT_VIL_TEXT = exact text of kriskyria.vil (core-codec)
-  src/data/estonian.js       Estonian output table (core-keys)
-  src/data/keycode-catalog.js catalog + categories (core-keys)
-  src/core/json.js           API-JSON (core-codec)
-  src/core/vil.js            API-VIL (core-codec)
-  src/core/workspace.js      API-WS ops (core-codec)
-  src/core/history.js        API-WS history (core-codec)
-  src/core/keycodes.js       API-KC (core-keys)
-  src/core/legend.js         API-LEG (core-keys)
-  src/app/*.js               artist; main.js last
-  tests/*.test.js, tests/load-core.js, tests/fixtures/  (tests lane)
+  src/data/board-kyria.js     BoardProfile (L1)
+  src/data/default-vil.js     KS.DEFAULT_VIL_TEXT = exact text of kriskyria.vil (L1)
+  src/data/qmk-settings.js    KS.QMK_SETTINGS = verbatim port of Vial qmk_settings.json @aef8222a (L1)
+  src/data/estonian.js        Estonian output table (L2)
+  src/data/keycode-catalog.js port of Vial keycodes.py @aef8222a (L2)
+  src/core/json.js            API-JSON (L1)
+  src/core/vil.js             API-VIL (L1)
+  src/core/workspace.js       API-WS ops (L1)
+  src/core/history.js         API-WS history (L1)
+  src/core/keycodes.js        API-KC (L2)
+  src/core/legend.js          API-LEG (L2)
+  src/app/*.js                L3; main.js last
+  tests/*.test.js, tests/load-core.js, tests/fixtures/   (L4)
 ```
 
 Rules (ADR-S1):
-- Each file is `(function (KS) { 'use strict'; … KS.<ns> = {...}; })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});`. No `import`/`export`, no `type="module"`, no top-level calls into other files. Cross-file calls happen only inside functions, so load order matters only for `src/app/main.js` (last), which starts the app on `DOMContentLoaded`.
-- Script order in `index.html`: `src/data/*`, `src/core/json.js`, `keycodes.js`, `vil.js`, `legend.js`, `workspace.js`, `history.js`, then `src/app/*`, with `main.js` last.
-- Core and data files use no `document`, `window`-only API, `localStorage`, `fetch`, `Date.now` or `Math.random`. They must load in Node with `require()`. `tests/load-core.js` requires every core and data file and returns `globalThis.KyriaStudio`.
-- No network: no `fetch`, XHR, remote URL, CDN, web font or `default.json` fallback (that fallback was original line 41).
+- Each file is `(function (KS) { 'use strict'; … })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});`.
+  - No `import`/`export` and no `type="module"`.
+  - No top-level calls into other files.
+  - `src/app/main.js` loads last and starts on `DOMContentLoaded`.
+- Script order: `src/data/*`, `src/core/json.js`, `keycodes.js`, `vil.js`, `legend.js`, `workspace.js`, `history.js`, then `src/app/*`, with `main.js` last.
+- Core and data files never touch `document`, `localStorage`, `fetch`, `Date.now` or `Math.random`. They must `require()` in Node; `tests/load-core.js` loads them all.
+- No network of any kind: no `fetch`, XHR, remote URL, CDN, web font or `default.json` fallback.
 
 ## 3. Lanes, file ownership and dependencies
 
 | Lane | Agent | Owns (exclusive) | Depends on |
 | --- | --- | --- | --- |
-| L1 core-codec | engineer or general | `src/core/json.js`, `src/core/vil.js`, `src/core/workspace.js`, `src/core/history.js`, `src/data/board-kyria.js`, `src/data/default-vil.js` | none; VERIFY-R2..R7 data only |
-| L2 core-keys | general | `src/core/keycodes.js`, `src/core/legend.js`, `src/data/estonian.js`, `src/data/keycode-catalog.js` | SCHEMA-DOC/SCHEMA-WS shapes (fixed here, not code); VERIFY-R1, R8 |
-| L3 app | artist | `index.html`, `DESIGN.md`, `README.md`, `styles/**`, `src/app/**` | API contracts; final integration after L1 and L2 land |
-| L4 tests | general or small | `tests/**`, plus one `studio-test` target in `/Makefile` (`node --test 'keymap-studio/tests/*.test.js'`; the directory form fails on Node 22) | contracts only; tests go green as L1 and L2 land |
+| L1 core-codec | engineer or general | `src/core/json.js`, `vil.js`, `workspace.js`, `history.js`; `src/data/board-kyria.js`, `default-vil.js`, `qmk-settings.js` | none |
+| L2 core-keys | general | `src/core/keycodes.js`, `legend.js`; `src/data/estonian.js`, `keycode-catalog.js` | SCHEMA-DOC/SCHEMA-WS shapes (fixed here) |
+| L3 app | artist | `index.html`, `DESIGN.md`, `README.md`, `styles/**`, `src/app/**`, and the Keymap Studio row/section in root `/README.md` | APIs; integrates when L1 and L2 land |
+| L4 tests | general or small | `tests/**`, plus one `studio-test` target in `/Makefile`: `node --test 'keymap-studio/tests/*.test.js'` (the directory form fails on Node 22) | contracts only |
 
-- Paths are relative to `keymap-studio/` except `/Makefile`.
-- No lane edits another lane's files. Disputed behaviour goes to architect. Implementers never edit tests to pass, and the tests lane never edits code.
-- No lane touches `/home/kris/Documents/*`, `host/layer-names.txt`, firmware, tools, backups, CI or the Backlog board.
-- Fixtures: `tests/fixtures/kriskyria.vil` is a byte-exact copy of `/home/kris/Documents/kriskyria.vil` (sha256 `2187ec80…2899`). Tests read `backups/kyriav4current.vil` and `firmware/.../keypress_hlc/layout_tables.h` in place.
+- Paths are relative to `keymap-studio/` unless they start with `/`.
+- No lane edits another lane's files. Implementers never edit tests to pass, and L4 never edits code. Disputes go to architect.
+- Untouchable: `/home/kris/Documents/*`, `host/layer-names.txt`, firmware, tools, backups, CI and the Backlog board.
+- Fixture: `tests/fixtures/kriskyria.vil` is a byte-exact copy of `/home/kris/Documents/kriskyria.vil` (sha256 `2187ec80…2899`).
+- Tests read `backups/kyriav4current.vil` and `firmware/keyboards/splitkb/halcyon/kyria/keymaps/keypress_hlc/layout_tables.h` and `vial.json` in place.
 
 ## 4. Module APIs
 
-Shared types:
-- `Issue = {severity:'error'|'warning'|'info', code:string, path:string, message:string}`. `code` values are stable `E_*`/`W_*` strings. `path` is JSON-path-like, for example `layout[2][3][1]`. `message` is short English UI text (ASSUMPTION-1).
+Shared rules:
+- `Issue = {severity:'error'|'warning'|'info', code, path, message}`. `code` is a stable `E_*`/`W_*`/`I_*` value. `path` looks like `layout[2][3][1]`. `message` is short English text.
 - Pure functions never mutate inputs. Tests deep-freeze inputs.
 
 ### API-JSON — `KS.json` (L1)
@@ -63,164 +75,230 @@ Node = {t:'o', e:[string, Node][]} | {t:'a', v:Node[]} | {t:'n', raw:string}
      | {t:'s', v:string} | {t:'b', v:boolean} | {t:'z'}          // plain data, JSON-safe
 parse(text, {maxDepth=64}?) → Node        // throws KS.json.JsonError {message, offset, line, column}
 stringify(node) → string                  // Python json.dumps default: ', ' and ': ', ensure_ascii
-                                          //   (\uXXXX lowercase, surrogate pairs), escapes \" \\ \n \r \t \b \f,
+                                          //   (lowercase \u escapes, surrogate pairs), escapes \" \\ \n \r \t \b \f,
                                           //   other C0 as \u00XX, numbers = raw verbatim, no trailing newline
-int(node) → number                        // requires /^-?(0|[1-9][0-9]*)$/ and safe integer, else throws
+int(node) → number                        // canonical safe integer literal only, else throws
 ```
 
-Invariants: `stringify(parse(t)) === t` for every Vial-written file. Duplicate keys and key order are kept. Strict JSON only: no comments, no trailing commas, no NaN. A BOM or whitespace around the document is accepted and dropped (reported by vil as `W_REFORMATTED`).
+Invariant: `stringify(parse(t)) === t` for Vial-written files. Duplicate keys and key order are kept. Input is strict JSON only.
 
 ### API-VIL — `KS.vil` (L1)
 
 ```
-decode(text, board) → {ok:true, doc:VialDocument, issues:Issue[]} | {ok:false, issues:Issue[]}
-encode(doc) → string                      // via json.stringify; byte-identical when unedited
-validate(doc, board) → Issue[]            // errors block export
+decode(text, board) → {ok:true, doc, issues} | {ok:false, issues}
+encode(doc) → string                       // byte-identical when unedited
+validate(doc, board) → Issue[]             // any 'error' blocks export
 capabilities(doc) → Capabilities
+layoutOptions.decode(value:number, labels) → {label, kind:'bool'|'select', choices?:string[], value:number}[]
+layoutOptions.encode(values:number[], labels) → number
 ```
 
 Decode rules:
-- Size > 2 000 000 characters gives `E_TOO_LARGE`. `layout` is required. The matrix must equal `board.matrix` (10 × 7), else `E_MATRIX`. Layer count must be 1..32.
-- `uid` must be a canonical unsigned decimal ≤ 2^64−1 and is kept as a string. If `uid === board.roundedUid` the result is `W_UID_ROUNDED`. Another unknown uid gives `W_UID_OTHER`.
-- Known item shapes (§5) must match exactly, including object key sequence. A non-conforming item becomes `{$raw: Node}` and adds `W_RAW_ITEM` (read-only, still exported verbatim). A non-conforming optional section becomes `{$raw: Node}` and adds `W_RAW_SECTION`.
-- Unknown top-level members go to `doc.extra` verbatim and add `I_UNKNOWN_FIELD`.
+- **Size and layout.** Input over 2 000 000 characters gives `E_TOO_LARGE`. A missing or malformed `layout` gives `E_LAYOUT`, and decode fails. The matrix must equal `board.matrix` (10 × 7), else `E_MATRIX`. Layer count must be 1..32.
+- **Vial-required fields** (FACT, brief verified inputs): `layout`, `encoder_layout` and `layout_options`. If `encoder_layout` or `layout_options` is missing, decode succeeds, the section is absent (never synthesized), and `validate` returns `E_VIAL_REQUIRED`, which blocks export.
+- **uid.** It must be a canonical unsigned decimal ≤ 2^64−1 and is stored as a string.
+  - `uid === board.roundedUid` gives `W_UID_ROUNDED`.
+  - Any other unknown uid gives `W_UID_OTHER`.
+  - Vial itself only warns on uid mismatch (research), so these are warnings, never errors.
+- **Raw passthrough.** Item shapes (§5) must match exactly, including object key sequence. Otherwise:
+  - a non-conforming item becomes `{$raw: Node}` with `W_RAW_ITEM`;
+  - a non-conforming optional section becomes `{$raw: Node}` with `W_RAW_SECTION`;
+  - unknown top-level members go to `doc.extra` with `I_UNKNOWN_FIELD`;
+  - in all cases the data is exported verbatim.
+- **Unknown keycodes.** A key cell string that is not catalog-known (`keycodes.isKnown`) gives `W_UNKNOWN_KEYCODE`: "Vial will load this as KC_NO". Examples: `KC_NONUS_BACKSLASH` and typos. The string is kept verbatim and is not an export blocker.
+- **Layout options.** Packing (FACT, `layout_editor.py`):
+  - Options are concatenated as a bit string with label[0] most significant.
+  - A string label is 1 bit.
+  - A select label `[title, ...choices]` takes `(choices.length − 1).bit_length()` bits.
+  - The imported value is preserved. The original default stays `0`, never rebased to the live `15`.
+  - `encode` returns `E_RANGE` if a choice is out of range.
 
 ### API-WS — `KS.workspace`, `KS.history` (L1)
 
 ```
-workspace.create(doc, {filename}) → Workspace          // meta defaults: original initialNames/palette
-workspace.fromDefault() → Workspace                    // decode(KS.DEFAULT_VIL_TEXT); must have no errors
+workspace.create(doc, {filename}) → Workspace          // meta defaults: original initialNames/palette (line 11)
+workspace.fromDefault() → Workspace                    // decode(KS.DEFAULT_VIL_TEXT); no errors allowed
 workspace.apply(ws, op:Op) → Workspace                 // pure, copy-on-write; throws KS.workspace.OpError {code, message}
 workspace.restore(json) → {ok, ws?, issues}            // validates stored SCHEMA-WS; never throws
-history.create(ws, {limit=200}) → History {past:Workspace[], present:Workspace, future:Workspace[]}
+history.create(ws, {limit=200}) → History {past, present, future}
 history.commit(h, op) / undo(h) / redo(h) → History;  canUndo(h) / canRedo(h) → boolean
 ```
 
-`Op` (plain data, the future transport seam):
-`key.set{layer,row,col,code}`, `encoder.set{layer,index,dir,code}`, `macro.set{index,actions}`, `tapDance.set{index,value}`, `combo.set{index,value}`, `keyOverride.set{index,value}`, `altRepeat.set{index,value}`, `setting.set{id,value}`, `layoutOptions.set{value}`, `uid.restoreKnown{}`, `meta.layerName{layer,value}`, `meta.layerColor{layer,value}`, `meta.keyLabel{layer,row,col,value|null}`, `batch{ops}`.
+`Op` (plain data; the future transport seam):
+`key.set{layer,row,col,code}`, `encoder.set{layer,index,dir,code}`, `macro.set{index,actions}`, `tapDance.set{index,value}`, `combo.set{index,value}`, `keyOverride.set{index,value}`, `altRepeat.set{index,value}`, `setting.set{qsid,value}`, `layoutOptions.set{value}`, `uid.restoreKnown{}`, `meta.layerName{layer,value}`, `meta.layerColor{layer,value}`, `meta.keyLabel{layer,row,col,value|null}`, `batch{ops}`.
 
 Op rules:
-- Ops never change counts (layers, macros, tap dances, combos, overrides, encoders, setting ids). Targeting an absent, raw or out-of-range item gives `OpError`.
-- `key.set` on a `-1` cell gives `E_NO_KEY`.
-- `uid.restoreKnown` is allowed only when the current uid equals `board.roundedUid` (OQ-3).
-- `meta.layerName` is trimmed and limited to 35 characters (original line 32). `meta.keyLabel` is limited to 24 characters (original line 30). Colors must be `#rrggbb`.
-- `batch` is atomic.
+- **Counts never change.** No op adds or removes layers, macros, tap dances, combos, overrides, alt-repeat entries, encoders or setting qsids. Targeting an absent, raw or out-of-range item gives `OpError`.
+- **Keycode values.** In `key.set`, `encoder.set`, tap dance, combo, override and alt-repeat values, every keycode must pass `keycodes.check` with no errors. This includes catalog-known names (QA-8). The single exception is re-setting the identical imported string, so undo can restore raw imported codes.
+- **`setting.set`** is allowed only for a qsid present in the file and described in `KS.QMK_SETTINGS`.
+  - The value must fit the field width (`0 .. 2^(8·width) − 1`) and any `min`/`max`.
+  - Boolean fields edit their `bit` within the qsid's integer.
+  - A qsid that is absent (for example 8) is never added. A present but undescribed qsid is read-only.
+- **Bit fields.**
+  - `keyOverride.set`: `layers` must be 0..65535 (16-bit); `trigger_mods`, `negative_mod_mask` and `suppressed_mods` 0..255; `options` 0..255 (FACT `"<HHHBBBB"`).
+  - `altRepeat.set`: `allowed_mods` must be 0..255. `options` may use only bits 0–3.
+- **`layoutOptions.set`** must round-trip through `vil.layoutOptions` with the board labels.
+- **`uid.restoreKnown`** is allowed only when the uid equals `board.roundedUid`.
+- **Other limits.**
+  - `key.set` on `-1` gives `E_NO_KEY`.
+  - Layer names are at most 35 characters (line 32). Key labels are at most 24 characters (line 30). Colors must be `#rrggbb`.
+  - `batch` is atomic.
 
 ### API-KC — `KS.keycodes` (L2)
 
 ```
 parse(cell:string|number) → Action        // total, never throws; unknown → {k:'raw', text}
-format(action) → string                   // canonical Vial name (VERIFY-R1); throws KS.keycodes.KeycodeError
-check(text, {layers, macros, tapDances}) → Issue[]   // for user-typed codes; grammar + ranges
+format(action) → string                   // canonical Vial qmk_id; throws KS.keycodes.KeycodeError
+isKnown(cell) → boolean                   // qmk_id or alias in catalog, incl. compound forms with known inner codes
+check(text, {layers, macros, tapDances}) → Issue[]   // user input: grammar + catalog membership + index ranges
+forCharacter(ch:string) → {direct:CharOption[], sequence:string[]|null}
+CharOption = {code:string, level:'plain'|'shift'|'altgr'|'shiftAltgr', hid:number, dead:boolean, keypad:boolean}
 byId(idOrAlias) → CatalogEntry|null;  catalog: CatalogEntry[];  categories: {id,label,ids}[]
-CatalogEntry = {id, aliases:string[], label, category, hid?:number}   // hid = HID usage for typing keys
+CatalogEntry = {id, aliases:string[], label, category, hid?:number}
 Action = {k:'none'} | {k:'trans'} | {k:'basic', id} | {k:'named', id}
   | {k:'mods', mods, inner:Action} | {k:'modtap', mods, tap:Action}
   | {k:'layer', fn:'MO'|'TG'|'TO'|'OSL'|'DF'|'TT'|'PDF', layer} | {k:'layertap', layer, tap:Action}
   | {k:'layermod', layer, mods} | {k:'osm', mods} | {k:'macro', index} | {k:'tapdance', index}
   | {k:'raw', text}
-Mods = {ctrl, shift, alt, gui, right}     // QMK 5-bit: one side flag for all; mixed sides → KeycodeError
+Mods = {ctrl, shift, alt, gui, right}     // QMK 5-bit: one side flag; mixed sides → KeycodeError
 ```
 
-The document stores code strings verbatim. `format` is used only for codes the user composes, and a code that is not edited is never reformatted (ADR-S3). The catalog includes every name present in the owner's Vial-written files (for example `KC_BSPACE`, `KC__VOLUP`, `RM_*`) plus the VERIFY-R1 set.
+Catalog rules:
+- **Source.** The catalog is a port of vial-gui `src/main/python/keycodes/keycodes.py` at `aef8222a`. It includes every `qmk_id`, every alias and every compound template (mod wraps, mod-taps, layer functions, OSM, TD, macros, user codes, lighting `RM_*`).
+- **Names.** `format` emits `qmk_id` only, so `KC_NONUS_BSLASH` is emitted, never `KC_NUBS`. `KC_NONUS_BACKSLASH` is not a catalog name.
+- **Verbatim storage.** Document strings are never reformatted unless edited (ADR-S3).
+- **Coverage.** Every name in the owner's Vial-written files must be `isKnown` (test).
+- **Other protocols.** A file whose `vial_protocol` is not 6 gives `W_PROTOCOL`: names are checked against this catalog.
+
+`forCharacter` (GOAL-0, ADR-S10):
+- **Option order.** `direct` holds every way to type `ch` from `estonian.js`, ordered plain < shift < altgr < shiftAltgr, then typing keys before keypad.
+- **Codes per level.**
+  - plain: `KC_x`
+  - shift: `LSFT(KC_x)`
+  - altgr: `RALT(KC_x)`
+  - shiftAltgr: the catalog's right Shift+Alt wrap of `KC_x` (`format` of `{shift, alt, right}`), omitted if the catalog has none.
+- **Dead keys.** `dead:true` marks a dead accent.
+- **Sequences.** `sequence` is non-null only for a precomposed letter not directly on the layout. It holds `[deadKeyCode, baseCode]` from the NFD decomposition, for example `é` → dead acute + `KC_E`. The UI may offer it as a macro of two `tap` actions, but only if a free (all-empty) macro slot exists.
 
 ### API-LEG — `KS.legend` (L2)
 
 ```
-describe(cell, ws) → Legend               // no layer resolution
+describe(cell, ws) → Legend
 at(ws, layer, row, col) → Legend          // KC_TRNS → layer 0 value, inherited:true (ADR-S7)
-encoder(ws, layer, index, dir) → Legend
-macroText(actions) → {text:string, complete:boolean}   // text actions via US send_string, Estonian output, dead-key NFC
+encoder(ws, layer, index, dir) → Legend   // dir 0 = clockwise, 1 = counter-clockwise (FACT, research)
+macroText(actions) → {text:string, complete:boolean}   // ASSUMPTION-4; dead-key NFC composition
 Legend = {code, inherited:boolean, fromLayer:number,
   kind:'char'|'shortcut'|'action'|'layer'|'modifier'|'macro'|'tapdance'|'none'|'raw',
   main:string, shift?:string, altgr?:string, shiftAltgr?:string, dead?:boolean,
   hold?:{kind:'mod'|'layer', text:string, layer?:number},
-  detail?:string, layer?:number, approximate?:boolean, a11y:string}
+  detail?:string, layer?:number, approximate?:boolean, unknown?:boolean, a11y:string}
 ```
 
-Semantics:
-- `main` is what the key types on an Estonian host. Examples: `LSFT(KC_5)` gives `%`, `RALT(KC_4)` gives `$`, `KC_SCOLON` gives `ö`, `LCTL(KC_C)` gives `Ctrl + c`.
-- Letters are lowercase in `main` and uppercase in `shift`.
-- Mod-tap and layer-tap fill `hold`. Tap dance `detail` lists tap/hold/double/tap-hold. Macro `main` is `macroText`.
-- Unknown codes show verbatim with `kind:'raw'`.
-- `KS.estonian.output(hid) → {levels:[plain,shift,altgr,shiftAltgr], dead:[4×bool]} | null`. The levels hold real characters with lowercase letters; dead accents are the accent character, and `null` where `layout_tables.h` has 0.
-- Dead flags (FACT: libxkbcommon `ee` keysym names, queried at Stage 1 through `tools/generate_layouts.py` helpers):
-  - 0x0d AltGr, Shift+AltGr (hook, horn)
-  - 0x2e plain, Shift, Shift+AltGr (´ ` ¸)
-  - 0x2f AltGr, Shift+AltGr (¨ ˚)
-  - 0x30 Shift+AltGr (¯)
-  - 0x31 and 0x32 Shift+AltGr (˘)
-  - 0x33 AltGr, Shift+AltGr (´ ˝)
-  - 0x34 Shift+AltGr (^)
-  - 0x35 plain, Shift (ˇ ~)
-  - 0x38 Shift+AltGr (˙)
-  - Everything else is not dead.
+Legend semantics:
+- **Main text.** `main` is what an Estonian host types. Examples:
+  - `LSFT(KC_5)` → `%`
+  - `RALT(KC_4)` → `$`
+  - `KC_SCOLON` → `ö`
+  - `LCTL(KC_C)` → `Ctrl + c`
+  - macro `~n` → `ñ`
+
+  Letters are lowercase in `main` and uppercase in `shift`.
+- **Hold.** Mod-tap and layer-tap fill `hold`.
+- **Detail.** Tap dance `detail` lists tap, hold, double and tap-hold.
+- **Unknown codes.** `unknown:true` marks a code that is not catalog-known.
+
+`KS.estonian.output(hid) → {levels:[plain,shift,altgr,shiftAltgr], dead:[4×bool]} | null`:
+- Levels are real characters with lowercase letters, and `null` where `layout_tables.h` has 0.
+- Dead flags (FACT, libxkbcommon `ee` keysym names):
+  - 0x0d AltGr, Shift+AltGr
+  - 0x2e plain, Shift, Shift+AltGr
+  - 0x2f AltGr, Shift+AltGr
+  - 0x30 Shift+AltGr
+  - 0x31 and 0x32 Shift+AltGr
+  - 0x33 AltGr, Shift+AltGr
+  - 0x34 Shift+AltGr
+  - 0x35 plain, Shift
+  - 0x38 Shift+AltGr
+  - No others.
 
 ## 5. SCHEMA-DOC and SCHEMA-WS
 
 ```
 VialDocument = {order:string[], fields:{…known Vial keys present…}, extra:[string, Node][]}
-fields (Vial names; any optional section may be {$raw:Node}):
-  version:number  uid:string  layout:KeyCell[][][]  encoder_layout:[KeyCell,KeyCell][][]
+fields (Vial names; any optional section may be {$raw:Node}; required for export: layout, encoder_layout, layout_options):
+  version:number  uid:string  layout:KeyCell[][][]  encoder_layout:[KeyCell /*CW*/, KeyCell /*CCW*/][][]
   layout_options:number  macro:MacroAction[][]  vial_protocol:number  via_protocol:number
-  tap_dance:[KeyCell,KeyCell,KeyCell,KeyCell,number][]   combo:[KeyCell×5][]
+  tap_dance:[onTap, onHold, onDoubleTap, onTapHold, tappingTermMs][]       // KeyCell×4 + number
+  combo:[KeyCell, KeyCell, KeyCell, KeyCell, output:KeyCell][]
   key_override:{trigger,replacement,layers,trigger_mods,negative_mod_mask,suppressed_mods,options}[]
   alt_repeat_key:{keycode,alt_keycode,allowed_mods,options}[]
-  settings:[number, number][]             // ordered [id, value]; object keys in the file
-KeyCell = string | number                 // -1 = no key; other numbers kept verbatim, read-only
-MacroAction = ['text', string] | ['tap'|'down'|'up', ...KeyCell[]] | ['delay', number]   // VERIFY-R2
+  settings:[qsid:number, value:number][]   // file order
+KeyCell = string | number                  // -1 = no key; other numbers kept verbatim, read-only
+MacroAction = ['text', string] | ['tap'|'down'|'up', ...KeyCell[]] | ['delay', number]
 Any list item may be {$raw:Node}.  encode emits `order`, then fields/extra in that order.
-Capabilities = {source:'file', layers, matrix:{rows,cols}, encoders, macros, macroBytes:null,
-  tapDance, combos, keyOverrides, altRepeat, settingIds:number[], layoutOptions:boolean,
-  editable:{[section]:boolean}}          // counts come from the file; 0/absent → panel hidden or empty-state
+Capabilities = {source:'file', layers, matrix:{rows,cols}, encoders, macros, macroBytes:null /* unknown offline */,
+  tapDance, combos, keyOverrides, altRepeat, settingQsids:number[], layoutOptions:boolean,
+  vialRequiredMissing:string[], editable:{[section]:boolean}}
 Workspace = {schema:2, filename, doc:VialDocument, meta:{layerNames:string[], layerColors:string[], keyLabels:{[`l:r:c`]:string}}}
 BoardProfile = {id:'splitkb-kyria-rev4', matrix:{rows:10, cols:7}, knownUid:'10669769700359951850',
   roundedUid:'10669769700359952000', keys:[{row,col,x,y,angle}] /* 50, original line 9 */,
-  encoders:[{index,label}] /* 4 */, layoutOptionLabels /* from keypress_hlc/vial.json */}
+  moduleCells:[{row,col,side:'left'|'right'}] /* rows 4 and 9, cols 0–4 */,
+  encoders:[{index,label}] /* 4 */, layoutOptionLabels /* verbatim from keypress_hlc/vial.json */}
 ```
 
-- Storage key: `kyria-keymap-studio/v2`, holding `JSON.stringify(Workspace)`. Never read or write `kyria-studio-v1`.
-- Matrix cells outside `board.keys` that are not `-1` (rows 4 and 9, for example `KC_MUTE` at 4,0) are listed as "Other matrix positions". Their physical meaning is Unknown.
+- Bit names (FACT):
+  - `key_override.options`: bit 0 trigger_down, 1 required_mod_down, 2 negative_mod_up, 3 one_mod, 4 no_reregister, 5 no_unregister_on_other_key_down, 7 enabled.
+  - `alt_repeat_key.options`: bit 0 default_to_this, 1 bidirectional, 2 ignore_mod_handedness, 3 enabled.
+  - Mod bytes follow ASSUMPTION-5.
+- Module cells: `side` is inferred from the split matrix (rows 0–4 left, 5–9 right) and the definition labels "Halcyon module left/right". They have no drawn position and are listed, not placed (FACT: 60 cells, 50 geometry).
+- Storage key `kyria-keymap-studio/v2`. Never read or write `kyria-studio-v1`.
 
 ## 6. NFRs
 
-- QA-1: an unedited import, then export, is byte-identical for all four Vial-written owner files (HLA §2). One edit changes only that value's bytes.
+- QA-0: every character in `estonian.js` levels can be assigned in at most two interactions after selecting a key. The legend updates immediately.
+- QA-1: an unedited import, then export, is byte-identical for `tests/fixtures/kriskyria.vil` and `backups/kyriav4current.vil`. One edit changes only that value's bytes.
 - QA-2: the uid string is exact through decode, encode, storage and undo.
 - QA-3: works from `file://` in current Chromium and Firefox with zero network requests.
-- QA-4: WCAG 2.2 AA. Board keys reachable by keyboard (roving focus and arrows), visible focus, names include the legend and code, live status region, no colour-only meaning.
-- QA-5: the PNG's smallest text is at least 0.19 × key width. The original ratio is 5.5/44 = 0.125. Final sizes go in `DESIGN.md`. The PNG stays within browser canvas limits and is verified by artist in both browsers.
-- QA-6: reload restores the workspace. Corrupt storage gives a message and a default layout, never a blank app. Quota errors are shown. A `storage` event from another tab gives a warning.
+- QA-4: WCAG 2.2 AA keyboard, focus and names. Board keys use roving focus with arrow keys. There is a live status region, and meaning never depends on colour alone.
+- QA-5 (learning image):
+  - The smallest PNG text is at least 0.19 × key width; the original was 0.125.
+  - The typed character is the largest text on each key.
+  - Per-layer export is legible at 100% zoom in an image viewer.
+  - Sizes go in `DESIGN.md`, and the PNG stays within browser canvas limits.
+- QA-6: reload restores the workspace. Corrupt storage shows a message and loads the default. Quota errors are shown. A `storage` event from another tab gives a warning.
 - QA-7: every failure surfaces an Issue or status message. No uncaught exception leaves the UI inconsistent.
+- QA-8: the studio never writes a keycode that is not catalog-known, except a verbatim imported string.
 
 ## 7. Threat model
 
-Inputs are imported `.vil` text and stored JSON.
-
 | Threat | Control | Test |
 | --- | --- | --- |
-| Script injection via keycode, macro or name text | DOM uses `textContent` or `setAttribute`. SVG is built with `createElementNS`. Canvas uses `fillText`. No `innerHTML` with data. | L4 hostile-string fixture; L3 browser check |
-| Stack exhaustion | Iterative parser or `maxDepth` 64. 2 MB limit. | L4 deep-nesting test |
-| Prototype pollution | Node objects are entry arrays; extras are arrays; `keyLabels` keys are validated as `l:r:c` | L4 `__proto__` fixture |
-| Silent data loss | Raw passthrough, byte-identity tests, export blocked on errors | QA-1 tests |
-| Exfiltration | No network code; checked by grep for `fetch(`/`http` in `src/` | L4 static test |
+| Script injection via keycode, macro or name text | `textContent`/`setAttribute`, `createElementNS`, canvas `fillText`; no `innerHTML` with data | L4 hostile strings; L3 browser |
+| Stack exhaustion | `maxDepth` 64 and a 2 MB limit | L4 |
+| Prototype pollution | Node objects are entry arrays; `keyLabels` keys validated as `l:r:c` | L4 `__proto__` fixture |
+| Silent data loss, including Vial's silent `KC_NO` | Raw passthrough, byte-identity tests, catalog-checked input, `W_UNKNOWN_KEYCODE`, export blocked on errors | L4 |
+| Exfiltration | No network code; grep check for `fetch(`/`http` in `src/` | L4 static |
 
-Residual risk: Vial may still refuse a file for device-side reasons not stored in `.vil`, such as macro memory (VERIFY-R2). The UI states this limit (UI-9).
+Residual risks are stated in UI-9:
+- macro memory is unknown offline;
+- Vial drops entries beyond device counts and loads unknown names as `KC_NO`.
 
 ## 8. UI contract and verification
 
 | ID | UI (L3) | States |
 | --- | --- | --- |
 | UI-1 | Header: Import, Export .vil, Save image, Undo/Redo (Ctrl+Z, Ctrl+Shift+Z), status/alert region | success, error, disabled |
-| UI-2 | Layer tabs and layer name/colour meta | |
-| UI-3 | Board SVG from BoardProfile and `legend.at`; selection; inherited keys dimmed with "↓ Base" | |
-| UI-4 | Estonian picker with Normal, Shift, AltGr and Shift+AltGr levels, catalog categories, and a composer for mod wrap, mod-tap, layer fn, layer-tap, OSM, TD, macro, and raw entry with live `keycodes.check` | |
-| UI-5 | Panels for Macros, Tap dance, Combos, Key overrides, Alt repeat, Encoders, Settings, Other matrix positions | shown only per Capabilities; raw = read-only "kept as is"; empty |
-| UI-6 | PNG: all or current layer, spare layers toggle, encoder strip; Canvas 2D | loading, success, error |
-| UI-7 | Issues list; export blocked on errors; warnings for rounded uid with the explicit restore action | |
-| UI-8 | Autosave and recovery messages; reset to default with confirm | |
-| UI-9 | Limits note: offline file editor, capabilities from file, nothing sent to the keyboard | |
+| UI-2 | Layer tabs; layer name/colour meta | |
+| UI-3 | Board SVG from BoardProfile + `legend.at`; selection; inherited keys dimmed "↓ Base"; unknown-code badge | |
+| UI-4 | **Primary**: Estonian character picker. Keyboard-shaped levels (Normal, Shift, AltGr, Shift+AltGr) plus a character search box. Uses `forCharacter`; dead accents labelled. **Secondary**: action composer (mod wrap, mod-tap hold, layer fn, layer-tap, OSM, TD, macro, catalog categories, raw entry with live `check`) | no selection = disabled |
+| UI-5 | Panels for Macros, Tap dance, Combos, Key overrides, Alt repeat, Encoders (CW/CCW), Settings (from `QMK_SETTINGS`, present qsids only), Layout options, Module buttons (10 listed cells) | per Capabilities; raw = read-only "kept as is"; absent = "not in this file" |
+| UI-6 | Learning PNG: current layer / chosen layers / all, spare toggle, encoder and module rows when non-empty | loading, success, error |
+| UI-7 | Issues list. Export is blocked on errors (incl. `E_VIAL_REQUIRED`). Rounded-uid warning with explicit restore | |
+| UI-8 | Autosave/recovery messages; reset to default with confirm | |
+| UI-9 | Limits: offline file editor; capabilities from the file; nothing sent to the keyboard; Vial loads unknown names as KC_NO, drops entries beyond device counts, and checks macro memory | |
 
 Traceability:
+- GOAL-0 → UI-4, UI-6, QA-0, QA-5, VERIFY-6, VERIFY-7.
 - CAP-1 → API-KC, API-LEG, UI-4, VERIFY-5, VERIFY-6.
 - CAP-2 → API-JSON, API-VIL, VERIFY-1..3.
 - CAP-3 → API-WS ops, UI-5, VERIFY-4.
@@ -230,46 +308,52 @@ Traceability:
 - CONSTRAINT-2 → API-KC.
 - CONSTRAINT-3 → §3, VERIFY-8.
 - CONSTRAINT-4 → Capabilities, UI-9.
+- CONSTRAINT-6 → README, VERIFY-9.
 
 | VERIFY | Covers | Lane / gate |
 | --- | --- | --- |
-| VERIFY-1 | QA-1, QA-2: round-trip owner files; uid survives storage JSON and history | L4 node, echo |
-| VERIFY-2 | `json.parse` errors (line/col), depth, duplicates, escapes vs Python for non-ASCII | L4 node, echo |
-| VERIFY-3 | decode issues: matrix, size, raw items/sections, rounded uid, extras | L4 node, echo |
-| VERIFY-4 | every Op: pure, count-preserving, OpError cases, undo/redo/limit | L4 node, echo |
-| VERIFY-5 | `estonian.js` levels equal the `layout_tables.h` Estonian block after uppercase display mapping; dead flags equal the §4 FACT list exactly | L4 node, echo |
-| VERIFY-6 | keycodes parse/format for every code in owner files; check() ranges; legends for the cited examples and macro `~n` → `ñ` | L4 node, echo |
-| VERIFY-7 | UI-1..UI-9 functional, QA-3..QA-6, PNG readability, both browsers over `file://` | L3 artist (functional and visual) |
-| VERIFY-8 | original HTML sha256 unchanged; `host/layer-names.txt` untouched | primary audit |
+| VERIFY-1 | QA-1, QA-2: round-trip fixtures; uid survives storage JSON and history | L4 node, echo |
+| VERIFY-2 | `json.parse` errors (line/col), depth, duplicates, Python-style escapes | L4 node, echo |
+| VERIFY-3 | Decode issues: matrix, size, raw items/sections, rounded uid, extras, `E_VIAL_REQUIRED`, `W_UNKNOWN_KEYCODE` (for example `KC_NONUS_BACKSLASH`) | L4 node, echo |
+| VERIFY-4 | Every Op: pure, count-preserving, OpError cases, settings width/bit/absent-qsid rules, layout-options packing (owner values 0, 10, 15 with the definition labels), undo/redo/limit | L4 node, echo |
+| VERIFY-5 | `estonian.js` levels equal the `layout_tables.h` Estonian block under uppercase display mapping; dead flags equal §4 exactly | L4 node, echo |
+| VERIFY-6 | Owner-file names are `isKnown`; `check` rejects typos and `KC_NONUS_BACKSLASH`; `format` emits `KC_NONUS_BSLASH`; `forCharacter` for `õ ä ö ü š ž € @ % < ´ é`; legends for the §4 examples; encoder dir labels | L4 node, echo |
+| VERIFY-7 | UI-1..UI-9 functional, QA-0, QA-3..QA-6, PNG readability, both browsers over `file://` | L3 artist |
+| VERIFY-8 | Original HTML sha256 unchanged; `host/layer-names.txt` untouched | primary audit |
+| VERIFY-9 | README usage and limits present; the published revision equals the verified one | primary before push |
 
-## 9. PROVISIONAL Vial details (researcher fills; data-only impact)
+## 9. Resolved Vial details (formerly VERIFY-R*)
 
-| ID | Question | Default until answered | Lane/file |
-| --- | --- | --- | --- |
-| VERIFY-R1 | Names Vial (protocol 6) writes and accepts: combined mods, multi-mod mod-tap, LT, LM, OSM, TT, PDF, QK_*, RM_*, mouse, USER, unknown codes (int or hex?) | Emit only names seen in owner files plus QMK names Vial is confirmed to write; others are raw entry only | L2 `keycode-catalog.js` |
-| VERIFY-R2 | Macro action forms; macro memory limit on load | §5 forms; unknown = raw; UI warns that the limit is unknown | L1, L3 |
-| VERIFY-R3 | QMK settings id table (name, type, width, bits, range) | Show ids present as integer fields 0..65535 with no names | L3 settings panel data |
-| VERIFY-R4 | `key_override.options`/mod masks and `alt_repeat_key` fields/options bits | Raw integer fields | L3 |
-| VERIFY-R5 | `layout_options` bit packing | Read-only raw value | L3 |
-| VERIFY-R6 | `encoder_layout` pair order (CCW, CW) | `[0]=CCW`, `[1]=CW` (owner files: VOLD, VOLU) | L2 legend, L3 |
-| VERIFY-R7 | Vial load behaviour on uid mismatch or count differences | Warn only | L1 issues text |
-| VERIFY-R8 | Text macros sent as US ASCII via send_string | Yes; legend `approximate:true` if a character is unmapped | L2 |
+| ID | Resolution | Source |
+| --- | --- | --- |
+| R1 | Unknown names load as `KC_NO` (silently). Canonical `KC_NONUS_BSLASH`, alias `KC_NUBS`; `KC_NONUS_BACKSLASH` is invalid. The catalog is ported from `keycodes.py`. | research, brief |
+| R2 | Macro actions are `text`/`tap`/`down`/`up`/`delay` as in §5. Memory size is unknown offline: warn only. | research |
+| R3 | Settings come from `qmk_settings.json` (`tabs[].fields[]`: `type`, `title`, `qsid`, `width`, `bit`, …). Edit only present qsids; an absent qsid 8 is legitimate. | research, architect read |
+| R4 | Key override and alt-repeat fields and bits as in §5. `layers` is 16-bit; mod bytes are 8-bit (`"<HHHBBBB"`). Mod bit order is ASSUMPTION-5. | research, `key_override.py` |
+| R5 | `layout_options`: label[0] is most significant. Bool = 1 bit; select = `(n−1).bit_length()`. Preserve imported values; no rebase of the default `0`. | research, `layout_editor.py` |
+| R6 | `encoder_layout` pair: index 0 = CW, 1 = CCW. **This reverses the first draft's default.** | research, `keyboard_comm.py` |
+| R7 | A uid mismatch is a warning only in Vial. The studio warns. | research |
+| R8 | Text macros use US-ASCII `send_string`. Still ASSUMPTION-4, affecting only the legend `approximate` flag. | open, non-critical |
 
 ## 10. ADRs
 
-- ADR-S1 Classic scripts, no build. Context: `file://` with no build step (brief line 18). Decision: ordered classic scripts with a namespace. Runner-up: one HTML file built by concatenation. Rejected because it needs a build step and one shared file for all lanes. ES modules were rejected because they fail from `file://` in Chromium. Consequence: no bundler. Load order is enforced by the rule in §2.
-- ADR-S2 Lossless JSON. Decision: own parser to Node, plus a Python-style writer. Runner-up: `JSON.parse` with source-text reviver. Rejected because it still needs a custom writer and loses order and unknown-field detail. Evidence: rounded-uid files in `/home/kris/Downloads`.
-- ADR-S3 Document mirrors `.vil`; codes are stored verbatim. Runner-up: a normalized Action tree. Rejected because it rewrites aliases and unknown codes.
-- ADR-S4 Core, app and source separation with `Op` + `Capabilities` (CONSTRAINT-5). Runner-up: UI mutates JSON directly, as the original does. Rejected because it blocks a device source later.
-- ADR-S5 Canvas 2D PNG from Legend. Runner-up: the original SVG, then img, then canvas chain. Rejected for text control and taint robustness.
-- ADR-S6 Estonian table from `layout_tables.h` with a cross-check test. Runner-up: the hand table at original line 12. Rejected because it is incomplete (for example, the GRAVE AltGr `•` is missing).
-- ADR-S7 Transparent keys show the layer 0 value (original line 25 behaviour). Runner-up: nearest lower non-transparent layer. Rejected because layers reached by MO from Base fall through to Base. Limitation: DF can change the default layer.
-- ADR-S8 Studio metadata stays in the browser under key v2. It never goes into `.vil`, and v1 is never written. Runner-up: metadata in a `.vil` extra field. Rejected because it alters Vial files.
-- ADR-S9 Tests use `node:test` with no npm. Runner-up: Vitest/Jest. Rejected because they add dependencies and a lockfile.
+- ADR-S1 Classic scripts, no build. Runner-up: a single HTML built by concatenation. Rejected because it needs a build step and one shared file. ES modules fail from `file://` in Chromium.
+- ADR-S2 Lossless JSON: own parser to Node plus a Python-style writer. Runner-up: a `JSON.parse` reviver. Rejected because it still needs a custom writer and loses order. Evidence: the rounded-uid files.
+- ADR-S3 The document mirrors `.vil`, and codes are stored verbatim. Runner-up: a normalized Action tree. Rejected because it rewrites aliases and unknown codes.
+- ADR-S4 Core, app and source separation with `Op` + `Capabilities`. Runner-up: the UI mutates JSON (original). Rejected because it blocks a future device source or replacement.
+- ADR-S5 Canvas 2D PNG from Legend. Runner-up: SVG, then img, then canvas. Rejected for text control.
+- ADR-S6 Estonian data from `layout_tables.h` with a cross-check test. Runner-up: the original hand table. Rejected because it is incomplete.
+- ADR-S7 Transparent keys show layer 0. Runner-up: nearest lower layer. Rejected because MO from Base falls through to Base. Limitation: DF.
+- ADR-S8 Studio metadata stays in browser storage under key v2, never in `.vil`. Runner-up: a `.vil` extra field. Rejected because it alters Vial files.
+- ADR-S9 `node:test` with no npm. Runner-up: Vitest/Jest. Rejected because of the dependencies.
+- ADR-S10 (new, GOAL-0) The primary picker is character-first, backed by `forCharacter`. The keycode/action composer is secondary. Runner-up: the original keycode-first tabs. Rejected because Vial lacks an Estonian keymap, which is the owner's core problem. Consequence: L2 owns the reverse lookup, and the picker never shows a US label as the primary legend.
 
-## 11. Owner questions (defaults applied)
+## 11. Decisions confirmed
 
-- OQ-1: Should the app's own text (buttons, help) be English as now, or Estonian? Default: English. The keyboard layout is Estonian only.
-- OQ-2: Starting layout before any import. Default: built-in copy of `/home/kris/Documents/kriskyria.vil`, which the original embeds. Alternative: `backups/kyriav4current.vil`.
-- OQ-3: When a file has the rounded uid `10669769700359952000`, offer a one-click "restore real Kyria UID"? Default: yes, as an explicit and undoable action.
-- OQ-4: Copy layer names and colours from the original app's browser storage? Default: no. The original is left completely alone.
+- UI copy: English.
+- Default keymap: the original's embedded layout (= `kriskyria.vil` text, `layout_options` 0).
+- Rounded uid: explicit, undoable restore.
+- No migration from `kyria-studio-v1`.
+- Publication: after tests, in the existing repository (CONSTRAINT-6).
+
+No open owner questions.
