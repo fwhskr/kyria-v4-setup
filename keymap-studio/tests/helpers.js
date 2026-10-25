@@ -47,7 +47,8 @@ function py(value) {
   if (value === null) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return JSON.stringify(value);
+  // Python ensure_ascii: every non-ASCII UTF-16 unit is \\uXXXX (lowercase), so astral characters become surrogate pairs.
+  if (typeof value === 'string') return JSON.stringify(value).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
   if (Array.isArray(value)) return `[${value.map(py).join(', ')}]`;
   return `{${Object.entries(value).map(([k, v]) => `${JSON.stringify(k)}: ${py(v)}`).join(', ')}}`;
 }
@@ -100,9 +101,14 @@ function estonianFirmwareTable() {
 // Expected Estonian output from the firmware. The table stores every letter uppercase (display form), so the
 // host case rule is applied (xkb): plain and AltGr letters are lowercase, Shift and Shift+AltGr stay uppercase.
 // Non-letters are unchanged. Unicode letters (Õ, Æ, Ŋ) are included.
-function expectedLevels(levels) {
+// One lossy display cell is corrected from xkb: HID 0x0c level 3 is "I" in the uppercase display, but the
+// latin "basic" symbols give AD08 = [i, I, rightarrow, idotless] (idotless = U+0131, keysym 0x02b9), which
+// the ee layout inherits. The real character is dotless i.
+const DISPLAY_LOSSY = { 0x0c: { 3: 'ı' } };
+function expectedLevels(levels, hid) {
   return levels.map((c, i) => {
     if (c === null) return null;
+    if (DISPLAY_LOSSY[hid] && DISPLAY_LOSSY[hid][i] !== undefined && c === 'I') return DISPLAY_LOSSY[hid][i];
     const lowercaseLevel = i === 0 || i === 2;
     return lowercaseLevel && /^\p{Lu}$/u.test(c) ? c.toLowerCase() : c;
   });

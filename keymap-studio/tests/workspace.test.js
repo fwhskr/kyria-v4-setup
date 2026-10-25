@@ -222,11 +222,19 @@ describe('VERIFY-4 setting.set (qsid, width and bit rules)', () => {
     refuses(ws, op('setting.set', { qsid: 8, bit: 0, value: false }));
   });
 
-  it('treats a present but undescribed qsid as read-only', (t) => {
-    const ws = base();
-    const qsid = presentQsids(ws).find((q) => fieldsFor(q).length === 0);
-    if (qsid === undefined) return t.skip('every owner qsid has a descriptor');
-    refuses(ws, op('setting.set', { qsid, value: 0 }));
+  it('treats a present but undescribed qsid as read-only', () => {
+    // Synthetic imported fixture (test data only): qsid 999 is present in the file but has no QMK_SETTINGS descriptor.
+    const text = vilText((o) => { o.settings['999'] = 5; });
+    const r = KS.vil.decode(text, board);
+    assert.equal(r.ok, true);
+    const ws = KS.workspace.create(r.doc, { filename: 'undescribed.vil' });
+    assert.equal(fieldsFor(999).length, 0, 'precondition: qsid 999 has no descriptor');
+    assert.ok(presentQsids(ws).includes(999), 'qsid 999 must be present in the imported file');
+    assert.equal(storedSetting(ws, 999), 5);
+    H.assertSameBytes(KS.vil.encode(ws.doc), Buffer.from(text, 'utf8'), 'undescribed setting export');
+    refuses(ws, op('setting.set', { qsid: 999, value: 0 }));
+    refuses(ws, op('setting.set', { qsid: 999, bit: 0, value: true }));
+    assert.equal(storedSetting(ws, 999), 5, 'refused edits must not change the stored value');
   });
 });
 

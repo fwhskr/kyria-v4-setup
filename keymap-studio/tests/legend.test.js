@@ -14,7 +14,7 @@ const hidOfName = (name) => {
   assert.ok(entry, `no HID for ${name}`);
   return entry[0];
 };
-const levelsOfName = (name) => H.expectedLevels(table.byHid.get(hidOfName(name)));
+const levelsOfName = (name) => H.expectedLevels(table.byHid.get(hidOfName(name)), hidOfName(name));
 
 describe('VERIFY-6 main text for the cited examples', () => {
   it('LSFT(KC_5) types %', () => {
@@ -86,7 +86,7 @@ describe('VERIFY-6 every typing key matches the firmware table', () => {
     const mismatches = [];
     for (const [hid, name] of H.HID_NAME) {
       if (!table.byHid.has(hid)) continue;
-      const want = H.expectedLevels(table.byHid.get(hid));
+      const want = H.expectedLevels(table.byHid.get(hid), hid);
       const l = describeCode(name);
       const got = [l.main, l.shift, l.altgr, l.shiftAltgr];
       want.forEach((c, i) => {
