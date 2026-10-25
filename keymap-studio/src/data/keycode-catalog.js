@@ -1,4 +1,10 @@
-/*
+/* SPDX-License-Identifier: GPL-2.0-only
+ * Derived from vial-gui keycodes.py (GPL-2.0-or-later) and keycodes_v6.py
+ * (repository GPLv2 COPYING), revision aef8222a2d0429a183b2ed692d5f9efcfd383f08:
+ * https://github.com/vial-kb/vial-gui/tree/aef8222a2d0429a183b2ed692d5f9efcfd383f08/src/main/python/keycodes
+ * Modified 2026-10-25: ported names/aliases into a browser catalog with labels,
+ * categories and HID usages; no imported keycode strings are rewritten.
+ *
  * Keycode catalog for the Estonian keymap studio: the names Vial protocol 6 accepts and
  * writes, with a picker label, a picker category and (for typing keys) the USB HID usage
  * that KS.estonian maps to real Estonian output.
