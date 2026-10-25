@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@small'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:15:00Z'
+updated_date: '2026-10-25T18:29:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -51,4 +51,8 @@ Created by Nova 2026-10-25 — READY architecture at 9591904 adds isKnown/forCha
 Native worker ses_e8bc67fb0ffeoz1d3DMN5HzFIg active; branch studio/tests, worktree /tmp/opencode/kyria-studio-tests.
 
 Created by Nova 2026-10-25 — audited tests initial4d4f5dc, only tests and studio-test target changed; expected initial MODULE_NOT_FOUND red and syntax checks pass. Same worker continued for final contract additions/macro safety. Verified type discriminant, KS.board, qsid/settingQsids. Upstream descriptor width is optional with default1; retain real boundary tests. Final integrated behavior and echo still pending.
+
+Created by Nova 2026-10-25 — initial integrated c6a4e68 run251 tests:238PASS11FAIL2 optional-owner-file skips. Parser depth/error-offset defects confirmed direct repro, awaiting codec echo before repair. Tests worker continued for source-backed dotlessı oracle and Python ensure_ascii expectations, not weakened assertions. Current native worker same ses_e8bc67fb0ffeoz1d3DMN5HzFIg.
+
+Created by Nova 2026-10-25 — tests177f679 completed, source-backed oracle fixes and deterministic unknown-qsid fixture audited. Scratch exact production src c6a4e68:251 tests244PASS6JSON parser failures1 optional external-owner-file skip. No assertion weakened; default owner fixture unchanged. Final merge/retest pending verification results.
 <!-- SECTION:NOTES:END -->

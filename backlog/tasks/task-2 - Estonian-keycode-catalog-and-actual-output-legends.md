@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:10:00Z'
+updated_date: '2026-10-25T18:26:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -51,4 +51,6 @@ Created by Nova 2026-10-25 — READY architecture addendum at 9591904: keycodes.
 Native worker ses_e8bc67fdaffebxmpeaf4JzVeMH active; branch studio/keys, worktree /tmp/opencode/kyria-studio-keys.
 
 Created by Nova 2026-10-25 — architect confirmed text macro ~n types ñ on standard Estonian dead-key layout. US LUT -> Estonian output -> compose; nonASCII/control unsafe imported macro should show approximate ?; no hardcoded macro index.
+
+Created by Nova 2026-10-25 — audited389f0b5 four owned files, clean and no diff whitespace errors. Integrated with codec/tests in c6a4e6842afbc444e09f67f7cec927542f01fb27 on studio/integration (not canonical). Echo ses_e8bb015ebffe4pvAYVdi407BxL active isolated exact revision for keycode/legend behavior. Real xkb dotlessı at HID0x0c ShiftAltGr must not be changed to firmware uppercase displayI.
 <!-- SECTION:NOTES:END -->

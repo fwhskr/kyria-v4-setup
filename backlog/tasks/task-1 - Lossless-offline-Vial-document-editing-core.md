@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@engineer'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:14:00Z'
+updated_date: '2026-10-25T18:18:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -53,4 +53,6 @@ Native worker ses_e8bc6801fffef8YGUadiBYxKBl active; branch studio/codec, worktr
 Created by Nova 2026-10-25 — architect confirmed text macros send US-position ASCII. New text actions accept only 0x08,09,0A,1B,20-7E; imported unsafe text preserved with W_MACRO_TEXT_UNSAFE, warning not export blocker. This supplemental validation will be reconciled after initial lane return.
 
 Created by Nova 2026-10-25 — audited initial core e8659c55797f59e52205b30c0afcf20163d634f7, six owned files clean. Worker continued same ses_e8bc6801fffef8YGUadiBYxKBl for explicitly added qmk-settings.js ownership, final macro safety helpers, invalid-required-field export gate. Initial self-checks passed; echo not yet run; not landed.
+
+Created by Nova 2026-10-25 — audited completed codec bceeeb8fe75da0ffabae839ec0328129ade2bbab, seven owned files clean, no unrelated changes. Integration branch studio/integration at /tmp/opencode/kyria-studio-integration includes codec only (not canonical landed). Independent echo ses_e8bb700eeffeksey68PUyMfJ1H active on exact codec revision for available behavior; new-keycode assignment awaits real TASK-2 code, never mock PASS. Delay max65024 verified by worker primary source.
 <!-- SECTION:NOTES:END -->
