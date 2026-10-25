@@ -1,10 +1,11 @@
 ---
 id: TASK-2
 title: Estonian keycode catalog and actual-output legends
-status: To Do
+status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
+updated_date: '2026-10-25T18:10:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -33,3 +34,21 @@ Verification: bounded Node parse/format/output checks and affected node --check;
 - [ ] #2 Composed modifiers, mod-tap, layer-tap, layer functions, macros and tap dance parse and render real outputs; invalid typed names are rejected without changing imported unknown codes
 - [ ] #3 Legends expose hold behavior, inheritance, macro approximations and unknown fallback honestly
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Implement exclusively assigned files against studio LLA contracts; run bounded self-checks, commit stable inputs; primary integrates and applies required verification.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Created by Nova 2026-10-25 — claimed for approved offline editor; separate native implementation lane.
+
+Created by Nova 2026-10-25 — READY architecture addendum at 9591904: keycodes.isKnown and forCharacter direct/reverse/dead-sequence lookup; character-first UX priority. Encoder0 CW1 CCW. Unknown imported names warn, user typos refused.
+
+Native worker ses_e8bc67fdaffebxmpeaf4JzVeMH active; branch studio/keys, worktree /tmp/opencode/kyria-studio-keys.
+
+Created by Nova 2026-10-25 — architect confirmed text macro ~n types ñ on standard Estonian dead-key layout. US LUT -> Estonian output -> compose; nonASCII/control unsafe imported macro should show approximate ?; no hardcoded macro index.
+<!-- SECTION:NOTES:END -->
