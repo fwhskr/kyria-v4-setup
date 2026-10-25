@@ -1,0 +1,64 @@
+/* Kyria Keymap Studio design tokens. Raw colour values live only in this file.
+   Components read these custom properties; the board and the PNG renderer read
+   them once at start-up (see src/app/keycap.js), so a theme only edits this file. */
+:root {
+  color-scheme: dark;
+
+  --surface-app: #0d1521;
+  --surface-panel: #152033;
+  --surface-sunken: #0f1a29;
+  --surface-raised: #1b2940;
+  --surface-selected: #22344d;
+  --keycap: #1d2b3e;
+  --keycap-inherited: #142133;
+  --keycap-band: #2c3f57;
+  --keycap-empty-line: #5a6c84;
+
+  --line: #2b3c52;
+  --line-control: #617a9c;
+
+  --text: #e8eff9;
+  --text-muted: #91a4bc;
+  --accent: #70b7ff;
+  --primary-fill: #a9d4ff;
+  --primary-ink: #0d1d31;
+  --focus-key: #ffffff;
+
+  --level-shift: #ffcf85;
+  --level-altgr: #71e3cd;
+
+  --status-unknown: #ffbd68;
+  --status-danger: #ff7a85;
+  --status-warning: #f2c14e;
+  --status-success: #86dbbd;
+
+  --layer-0: #70b7ff;
+  --layer-1: #4dd8cc;
+  --layer-2: #83d38a;
+  --layer-3: #ffbd68;
+  --layer-4: #ba9bff;
+  --layer-5: #ffe071;
+  --layer-6: #ff8f9c;
+  --layer-7: #9daabd;
+
+  /* System fonts only (architecture.md §8); no font files. Proportional faces are
+     named before the generic families because some desktops map system-ui and
+     sans-serif to a monospace font. */
+  --font-ui: "Adwaita Sans", "Segoe UI", "Noto Sans", "Cantarell", "Ubuntu", "Helvetica Neue", Arial, "DejaVu Sans", system-ui, sans-serif;
+  --font-legend: "Adwaita Sans", "Segoe UI", "Noto Sans", "Cantarell", "Ubuntu", "Helvetica Neue", Arial, "DejaVu Sans", system-ui, sans-serif;
+  --font-code: "DejaVu Sans Mono", "Cascadia Mono", Consolas, "Noto Sans Mono", "Liberation Mono", ui-monospace, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-control: 8px;
+  --radius-panel: 14px;
+
+  --shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.45);
+  --motion-quick: 120ms;
+  --motion-overlay: 140ms;
+}

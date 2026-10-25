@@ -1,8 +1,25 @@
 # Kyria Keymap Studio: design
 
-Status: Stage 1 design, 2026-10-25. Design and plan only; nothing here authorizes implementation.
+Status: implemented for TASK-3, 2026-10-25. Stage 1 design, updated where the READY architecture or the owner's answers changed it; §0 lists those changes and wins over older wording below.
 Owner brief: `docs/product/brief.md` (GOAL-1/2, CAP-1..5, CONSTRAINT-1..5).
 Core contracts (document model, Vial codec, keycode parser, Estonian output tables, persistence, history, validation) belong to the architect in `architecture.md`. Section 12 lists what this UI needs from those contracts; where names differ, `architecture.md` wins.
+
+## 0. Decisions made during implementation
+
+These supersede the Stage 1 text where they differ.
+
+- **Fonts.** System fonts only (architecture.md §8; owner). No font files and no icon library. Proportional faces are named before `system-ui`/`sans-serif` because the owner's desktop maps both generics to a monospace Nerd Font: `--font-ui` and `--font-legend` are `"Adwaita Sans", "Segoe UI", "Noto Sans", "Cantarell", "Ubuntu", "Helvetica Neue", Arial, "DejaVu Sans", system-ui, sans-serif`; `--font-code` starts with `"DejaVu Sans Mono"`. Symbols (↓ ↻ ↺ ⇧ →) are text glyphs; per-glyph fallback covers Estonian AltGr output.
+- **Letter case follows the legend model**: the main legend is what is typed (`a`, lowercase). The Shift corner is left out only when it is just the capital of the main legend; the "How to read" strip says "Letters: Shift types the capital".
+- **Every AltGr output is shown** in the top-right corner (owner: never hide actual output), not only Estonian essentials. Shift + AltGr outputs are in the picker, search and accessible names, not on keycaps.
+- **Mod-tap and layer-tap keys** show the tap key's Shift and AltGr outputs too (the legend model describes the tap only; the app looks the tap key up).
+- **Layer keys**: `MO(n)` gets a layer-coloured band `hold n`; `TG/TO/OSL/TT/DF/PDF` get a bottom qualifier (`toggle 3`). Layer-tap keys keep a normal keycap with a band in the target layer's colour.
+- **Band abbreviations** when the hold text does not fit: `Right Alt → AltGr`, `Right Ctrl → R Ctrl`, `Left X → X`, `Volume Up → Vol +`, and so on (`src/app/keycap.js`). Truncation with `…` is the last resort; the full text stays in the accessible name.
+- **Unknown codes**: amber dotted keycap, `Unknown` tag and the raw code in `--font-code`, wrapped up to three lines.
+- **Encoders**: `encoder_layout` pair index 0 is clockwise, 1 counter-clockwise (LLA R6). Dials show `↺ CCW` left and `↻ CW` right. On the board, encoders and module buttons are always editable and marked `(off)` when the file's layout options say they are not fitted; the PNG leaves those out and says so in its notes. Layout options are never rebased (`0` stays `0`).
+- **Macros**: text steps accept only 0x08, 0x09, 0x0A, 0x1B, 0x20–0x7E (`vil.checkMacroText`); imported unsafe text is kept and flagged. Characters go in through **Character or key**, which inserts `keycodes.macroActions` (basic keycodes with explicit Shift/AltGr down and up), never compound codes. Composed letters not on the layout (`é`) can become a two-press macro only in an empty macro slot.
+- **Reference image**: one layer is 1920 × 1080 at 1× by default (readable at 100 % on a common screen), with a 2× option; several layers use two columns at k = 64. Text minimum on every image is 0.19 × the main key width (QA-5); key legends stay ≥ 0.20 k.
+- **Storage**: `kyria-keymap-studio/v2` holds the workspace (validated with `workspace.restore`); `kyria-keymap-studio/v2/ui` holds view state and the export baseline. `kyria-studio-v1` is never read or written.
+- **CSP**: `index.html` carries a strict meta Content-Security-Policy (`script-src 'self'`, `connect-src 'none'`, no inline script); it works from `file://` in Chromium and Firefox.
 
 ## 1. Read of the brief
 
@@ -80,12 +97,11 @@ Status never relies on colour alone: Unknown also has a dotted border and an "Un
 
 ### Typography
 
-- `--font-ui`: `"Atkinson Hyperlegible Next", "Adwaita Sans", "DejaVu Sans", sans-serif`. Weights 400, 600, 700, subsets latin and latin-ext (covers õ ä ö ü š ž € and the dead-key accents).
-- `--font-code`: `"Atkinson Hyperlegible Mono", "DejaVu Sans Mono", monospace`. Weight 400, latin.
+- `--font-ui`, `--font-legend`, `--font-code`: system stacks, see §0 (Stage 1 proposed bundled Atkinson Hyperlegible; superseded).
 - Source: Google Fonts builds via Fontsource (OFL-1.1), measured 7–13 KB per woff2 file, about 90 KB total. Embedded as base64 `data:` URLs in `assets/fonts.css` because Chromium refuses `file://` font loads; verified loading under `file://` in headless Chromium 153 and Firefox 155 on 2026-10-25. The OFL text ships beside it.
 - UI scale (px, classical scale): 12 shortcut hints only; 14 dense controls and list rows; 16 body and form text; 18 section headings; 21 view titles; 26 sheet layer title at 1×. Line height 1.45 for body, 1.2 for headings. Body measure ≤ 65ch.
 - Weights: 400 body, 600 labels and legends, 700 hold bands and tags.
-- Letters on keys are shown as capitals (keycap convention, same as the Kyria's own right-hand screen). See question D1.
+- Letters on keys follow the legend model (lowercase main legend), see §0.
 
 ### Space, shape, elevation, motion
 
@@ -93,7 +109,7 @@ Status never relies on colour alone: Unknown also has a dotted border and an "Un
 - Radii by hierarchy, not one radius everywhere: keycap 0.10 k; controls 8 px; panels 14 px; layer tabs 8 px; no pills.
 - Elevation: no drop shadows on panels. Popovers and dialogs only: `0 12px 32px rgb(0 0 0 / .45)` plus a `--line-control` outline.
 - Motion: selection ring 120 ms ease-out (opacity and stroke only); popover 140 ms opacity plus 4 px translate; assigned-key confirmation pulse 180 ms on the changed keycap's outline. `prefers-reduced-motion: reduce` removes travel and the pulse. No load animations. No `transition: all`.
-- Icons: Material Symbols Rounded, the project's existing icon system (`fonts/MaterialSymbolsRounded.ttf`, codepoints in `tools/generate_smooth.py` `SYMBOLS`, the same symbols the keyboard's screen draws). Shipped as SVG path data from Google's official per-icon SVGs (`google/material-design-icons`, Apache-2.0) in `assets/icons.js`, drawn as inline SVG on screen and `Path2D` on canvas. No second icon library.
+- Icons: none. The rail has text labels; symbols are Unicode text glyphs (§0).
 
 ## 5. Keycap legend system
 
@@ -329,19 +345,22 @@ App root: `keymap-studio/` (brief GOAL-1). Classic `<script>` files in a fixed o
 
 | File | Content |
 |---|---|
-| `keymap-studio/index.html` | Shell markup, landmarks, script and style order |
-| `keymap-studio/styles/tokens.css` | Section 4 tokens; the only place with raw colours |
-| `keymap-studio/styles/app.css` | Layers: reset, layout, components, utilities |
-| `keymap-studio/assets/fonts.css`, `assets/OFL.txt` | Base64 `@font-face` for Atkinson Hyperlegible Next 400/600/700 latin + latin-ext and Mono 400 latin |
-| `keymap-studio/assets/icons.js` | Material Symbols Rounded path data, names matching `tools/generate_smooth.py` `SYMBOLS` plus rail icons; licence via `fonts/MaterialSymbols-LICENSE.txt` |
-| `keymap-studio/ui/strings.js` | Copy deck and abbreviation table |
-| `keymap-studio/ui/legend.js` | Legend layout: action + k → runs, fit cascade |
-| `keymap-studio/ui/keycap-svg.js` | Runs → SVG keycaps (board, mini boards, picker) |
-| `keymap-studio/ui/shell.js` | Top bar, rail, routing, status line, issues drawer, dialogs, shortcuts |
-| `keymap-studio/ui/board.js` | Board, roving focus, selection, encoder dials, layer bar and settings |
-| `keymap-studio/ui/composer.js`, `ui/picker.js` | Section 7 |
-| `keymap-studio/ui/macros.js`, `tapdance.js`, `combos.js`, `overrides.js`, `altrepeat.js`, `settings.js` | Section 8 |
-| `keymap-studio/ui/sheet.js` | Canvas renderer, both sheet formats, preview view, PNG export |
+| `keymap-studio/index.html` | Shell, meta CSP, script order (data, core, app; `main.js` last) |
+| `keymap-studio/styles/tokens.css` | §4 tokens; the only file with raw colours |
+| `keymap-studio/styles/studio.css` | Cascade layers: reset, layout, components, utilities |
+| `keymap-studio/src/app/dom.js` | Element helpers (text-only sinks), downloads, native `<dialog>` chooser |
+| `keymap-studio/src/app/text.js` | Copy deck: section names, levels, messages, limits |
+| `keymap-studio/src/app/store.js` | App state, history labels, persistence, targets (keys, encoders, editor slots), guarded legend access, issues |
+| `keymap-studio/src/app/keycap.js` | Legend layout (§5) shared by SVG and Canvas |
+| `keymap-studio/src/app/board.js` | Layer bar, board, encoder dials, module buttons, roving focus |
+| `keymap-studio/src/app/picker.js` | Character-first picker, search, key/layer/macro/tap-dance tabs |
+| `keymap-studio/src/app/composer.js` | Action composer and raw keycode entry |
+| `keymap-studio/src/app/features.js` | Macros, tap dance, combos, key overrides, alt repeat |
+| `keymap-studio/src/app/settings.js` | File facts and UID restore, layout options, QMK settings, limits, reset |
+| `keymap-studio/src/app/sheet.js` | Reference image renderer, preview view, PNG export |
+| `keymap-studio/src/app/shell.js` | Header, rail, banners, issues, routing, import/export, shortcuts |
+| `keymap-studio/src/app/main.js` | Start-up checks and global error reporting |
+| `keymap-studio/README.md` | Public usage, Vial workflow and limits |
 
 Ordered visible tasks for Stage 3 (each with its own functional and visual checks):
 
@@ -380,7 +399,7 @@ Load from `file://` with no console errors and no non-`file:`/`data:`/`blob:` re
 | AP-2 | Every legend run's box lies inside its keycap zone (key-local coordinates via `getBBox`), no two runs intersect |
 | AP-3 | Computed font size of every keycap run ≥ 0.20 k; corner legends ≥ 0.25 k; single main glyphs 0.44 k (dead-key accents 0.50 k) |
 | AP-4 | Text colour pairs from computed styles meet section 4 ratios (≥ 4.5:1 text, ≥ 3:1 control boundaries) |
-| AP-5 | Sheet canvas text runs (recorded by wrapping `fillText` in the test page): every run ≥ 0.20 k and measured width ≤ zone width; This layer PNG is 3840 × 2160 unless notes force more height |
+| AP-5 | Sheet text runs (from `KyriaStudio.app.sheet.render({log})`): every run ≥ 0.19 × main key width; key runs ≥ 0.20 k, inside their key, and the typed character largest; one layer is 1920 × 1080 at 1× unless notes need more height |
 | AP-6 | An Unknown code renders the raw code text and the "Unknown" tag; no keycap with a non-`KC_NO` code renders zero text runs |
 | AP-7 | `elementFromPoint` at each key centre, including 15°, 30° and 45° thumbs, returns that key |
 | AP-8 | No page-level horizontal overflow at 1920, 1440, 1280, 1024, 390 widths; board frame scrolls instead |
@@ -393,7 +412,7 @@ Viewport and state matrix: 1920 × 1080, 1440 × 900, 1280 × 800 (editing targe
 
 ## 15. Questions
 
-Look and feel, for the owner (each has a default the design already uses):
+Resolved 2026-10-25 (primary, no further owner questions): D1 follows the legend model (lowercase main, capital only as Shift output); D2 every AltGr output; D3 system fonts; D4 no batch per-layer export; D5 English; D6 Super where the legend model says so; D7 rotated. The original questions:
 
 - D1. Letters on keys and in the sheet: capitals like keycaps and the Kyria's own screen, or lowercase as now? Default: capitals.
 - D2. AltGr characters in key corners: Estonian essentials (number row, punctuation, š ž €) or every AltGr character xkb defines (Æ, ß, “, → …)? Default: essentials. The picker always shows all.

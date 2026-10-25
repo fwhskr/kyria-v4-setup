@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Kyria Keymap Studio</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/studio.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to the editor</a>
+<div id="app" class="app" aria-busy="true">
+  <noscript><p class="boot-message">Kyria Keymap Studio needs JavaScript. It runs entirely in this browser and sends nothing anywhere.</p></noscript>
+  <p class="boot-message" id="boot-message">Loading the studio…</p>
+</div>
+
+<script src="src/data/board-kyria.js"></script>
+<script src="src/data/default-vil.js"></script>
+<script src="src/data/qmk-settings.js"></script>
+<script src="src/data/estonian.js"></script>
+<script src="src/data/keycode-catalog.js"></script>
+<script src="src/core/json.js"></script>
+<script src="src/core/keycodes.js"></script>
+<script src="src/core/vil.js"></script>
+<script src="src/core/legend.js"></script>
+<script src="src/core/workspace.js"></script>
+<script src="src/core/history.js"></script>
+<script src="src/app/dom.js"></script>
+<script src="src/app/text.js"></script>
+<script src="src/app/store.js"></script>
+<script src="src/app/keycap.js"></script>
+<script src="src/app/board.js"></script>
+<script src="src/app/picker.js"></script>
+<script src="src/app/composer.js"></script>
+<script src="src/app/features.js"></script>
+<script src="src/app/settings.js"></script>
+<script src="src/app/sheet.js"></script>
+<script src="src/app/shell.js"></script>
+<script src="src/app/main.js"></script>
+</body>
+</html>
