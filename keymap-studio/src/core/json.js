@@ -16,32 +16,38 @@
     function string() {
       const start = i++;
       while (i < text.length) {
-        const c = text[i++];
+        const c = text[i];
         if (c === '"') {
+          i++;
           try { return JSON.parse(text.slice(start, i)); } catch (_) { fail('Invalid string escape'); }
         }
         if (c.charCodeAt(0) < 32) fail('Control character in string');
         if (c === '\\') {
-          if (text[i] === 'u') { if (!/^[0-9a-fA-F]{4}$/.test(text.slice(i + 1, i + 5))) fail('Invalid Unicode escape'); i += 5; }
+          i++;
+          if (text[i] === 'u') {
+            i++;
+            for (let digit = 0; digit < 4; digit++, i++) if (!/[0-9a-fA-F]/.test(text[i] || '\0')) fail('Invalid Unicode escape');
+          }
           else if ('"\\/bfnrt'.includes(text[i] || '\0')) i++;
           else fail('Invalid string escape');
-        }
+        } else i++;
       }
       fail('Unterminated string');
     }
     function value(depth) {
-      ws(); if (depth > maxDepth) fail('Maximum JSON depth exceeded');
+      ws();
       const c = text[i];
       if (c === '"') return {t:'s', v:string()};
       if (c === '{' || c === '[') {
+        if (depth >= maxDepth) fail('Maximum JSON depth exceeded');
         i++; ws(); const object = c === '{', end = object ? '}' : ']', items = [];
         if (text[i] === end) { i++; return object ? {t:'o', e:items} : {t:'a', v:items}; }
         for (;;) {
           ws(); let key;
-          if (object) { if (text[i] !== '"') fail('Expected object key'); key = string(); ws(); if (text[i++] !== ':') fail('Expected colon'); }
+          if (object) { if (text[i] !== '"') fail('Expected object key'); key = string(); ws(); if (text[i] !== ':') fail('Expected colon'); i++; }
           const child = value(depth + 1); items.push(object ? [key, child] : child); ws();
           if (text[i] === end) { i++; break; }
-          if (text[i++] !== ',') fail('Expected comma');
+          if (text[i] !== ',') fail('Expected comma'); i++;
         }
         return object ? {t:'o', e:items} : {t:'a', v:items};
       }
