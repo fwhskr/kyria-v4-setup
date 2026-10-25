@@ -23,7 +23,10 @@ Keep the whole `keymap-studio` folder together: `index.html` loads the files nex
    layout.)
 3. Select a key on the board, then choose what it should type:
    - search for a character (type `õ`, `@` or `€`) or a key name (`enter`, `volume`), or
-   - click a key on the Estonian keyboard below, at the Plain, Shift, AltGr or Shift + AltGr level.
+   - click a key on the Estonian keyboard below, at the Plain, Shift, AltGr or Shift + AltGr level, or
+   - for Ctrl, Shift, Alt, AltGr, Super and keys such as Enter, the arrows or F1, open
+     **Modifiers and other keys** (or the **Ctrl, Shift, Alt and other modifiers** link beside the levels).
+     The levels only choose which character a key types; they don't assign Shift or AltGr themselves.
 
    If the key already has a hold action (for example *tap a, hold Shift*), picking a plain character keeps
    the hold.

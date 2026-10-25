@@ -15,8 +15,10 @@
     {offset: 1.25, ids: ['KC_NONUS_BSLASH', 'KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH']}
   ];
   const CHAR_CATEGORIES = new Set(['letters', 'digits', 'punctuation', 'shifted-symbols']);
+  // The level switch only chooses characters, so the modifier keys get a tab named after them,
+  // listed first in it, and a link to them beside the level switch (owner: "they were on a different tab").
   const TABS = [
-    {id: 'chars', label: 'Characters'}, {id: 'keys', label: 'Keys and actions'}, {id: 'layers', label: 'Layers'},
+    {id: 'chars', label: 'Characters'}, {id: 'keys', label: 'Modifiers and other keys'}, {id: 'layers', label: 'Layers'},
     {id: 'macros', label: 'Macros'}, {id: 'tapdances', label: 'Tap dances'}
   ];
   const DEAD_NAMES = {'\u02c7': 'caron', '~': 'tilde', '\u00b4': 'acute accent', '`': 'grave accent', '\u00a8': 'diaeresis', '\u02da': 'ring above',
@@ -119,6 +121,12 @@
         h('span', {text: lv.label}))));
   }
 
+  function showModifiers() {
+    const ui = A.store.ui;
+    ui.pickerTab = 'keys'; ui.keyCategory = 'modifiers'; ui.search = '';
+    S.render('ptab:keys');
+  }
+
   /* ---------- search ---------- */
   function searchResults(q) {
     const out = [];
@@ -185,9 +193,10 @@
   /* ---------- other tabs ---------- */
   function keysTab() {
     const ui = A.store.ui;
-    const cats = (S.guard(() => KS.keycodes.categories, []) || []).filter(c => !CHAR_CATEGORIES.has(c.id) && Array.isArray(c.ids) && c.ids.length);
+    const listed = (S.guard(() => KS.keycodes.categories, []) || []).filter(c => !CHAR_CATEGORIES.has(c.id) && Array.isArray(c.ids) && c.ids.length);
+    const cats = listed.filter(c => c.id === 'modifiers').concat(listed.filter(c => c.id !== 'modifiers'));
     if (!cats.length) return h('p', {class: 'hint', text: 'The keycode catalog isn\u2019t available.'});
-    if (!cats.some(c => c.id === ui.keyCategory)) ui.keyCategory = cats.some(c => c.id === 'editing') ? 'editing' : cats[0].id;
+    if (!cats.some(c => c.id === ui.keyCategory)) ui.keyCategory = cats[0].id;
     const cat = cats.find(c => c.id === ui.keyCategory);
     const name = A.dom.id('cat');
     return h('div', {class: 'keys-tab'},
@@ -245,7 +254,7 @@
     const body = h('div', {class: 'picker-body', id: 'picker-body'});
     const searchId = A.dom.id('search');
     const search = h('input', {id: searchId, class: 'input search', type: 'search', value: ui.search, autocomplete: 'off', spellcheck: 'false',
-      placeholder: 'Find a character or key, e.g. \u00f5, @, \u20ac or enter', 'data-fid': 'picker-search', 'aria-describedby': 'picker-target',
+      placeholder: 'Find a character or key, e.g. \u00f5, @, ctrl or enter', 'data-fid': 'picker-search', 'aria-describedby': 'picker-target',
       on: {input: e => { ui.search = e.target.value; fill(body); }, keydown: e => { if (e.key === 'Escape' && ui.search) { e.preventDefault(); ui.search = ''; e.target.value = ''; fill(body); } }}});
     const tabs = h('div', {class: 'picker-tabs', role: 'tablist', 'aria-label': 'Picker sections'},
       TABS.map((t, i) => h('button', {type: 'button', role: 'tab', class: 'picker-tab', 'aria-selected': String(ui.pickerTab === t.id), tabindex: ui.pickerTab === t.id ? '0' : '-1',
@@ -259,7 +268,10 @@
       A.dom.clear(container);
       if (ui.search.trim()) { container.setAttribute('aria-label', 'Search results'); container.append(h('div', {class: 'results'}, searchResults(ui.search))); return; }
       container.removeAttribute('aria-label');
-      if (ui.pickerTab === 'chars') container.append(levelSwitch(), charKeyboard(),
+      if (ui.pickerTab === 'chars') container.append(
+        h('div', {class: 'pk-toolbar'}, levelSwitch(),
+          h('button', {type: 'button', class: 'link pk-modifiers', 'data-fid': 'show-modifiers', text: 'Ctrl, Shift, Alt and other modifiers', on: {click: showModifiers}})),
+        charKeyboard(),
         h('p', {class: 'hint', text: 'Dotted keys are dead keys: they add an accent to the next letter. Shift + AltGr characters and every AltGr character are reachable here and through search.'}));
       else if (ui.pickerTab === 'keys') container.append(keysTab());
       else if (ui.pickerTab === 'layers') container.append(layersTab());

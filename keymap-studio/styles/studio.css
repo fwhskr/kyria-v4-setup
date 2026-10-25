@@ -207,6 +207,8 @@
   .segment span { display: block; padding: 6px 12px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
   .segment input:checked + span { background: var(--surface-selected); color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
   .segment input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .pk-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+  .pk-modifiers { min-height: 32px; padding: 4px 0; font-weight: 600; }
   .pk-board { --u: min(54px, calc((100cqi - 8px) / 14.6)); display: flex; flex-direction: column; gap: calc(var(--u) * 0.1); margin: var(--space-3) 0; }
   .pk-row { display: flex; gap: calc(var(--u) * 0.1); margin-inline-start: calc(var(--offset) * var(--u) * 0.6); }
   .pk {
