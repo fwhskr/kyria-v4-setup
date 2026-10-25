@@ -69,6 +69,12 @@ is needed. Up to 9 letters show full size, up to 12 in smaller text.
 
 ## Changing the layout
 
+For **Estonian character-first editing and readable typing-reference images**, use
+[Keymap Studio](keymap-studio/README.md). Download this repository, then open
+`keymap-studio/index.html` in your browser — no installation, server or keyboard
+connection is needed. Export a `.vil` file and load it using Vial when you are
+ready to apply your changes. The studio does not flash or write to your keyboard.
+
 Use [Vial](https://get.vial.today/) as usual. To keep a copy here, save it in
 Vial (*File → Save current layout*) into `backups/`, or run `make backup` to
 read the keymap and settings straight from the keyboard. Commit the result.
