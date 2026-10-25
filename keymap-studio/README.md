@@ -77,7 +77,8 @@ for high-resolution screens.
 - **Your data stays in the browser.** Layer names, colours and your own key labels are kept in this
   browser's storage and are not written to the `.vil` file. Clearing browser data removes them.
 - Everything else in the file, including the exact keyboard UID and fields the studio doesn't edit, is
-  exported unchanged. An unedited file exports byte-for-byte identical.
+  exported unchanged. An unedited file saved by Vial exports byte-for-byte identical; a file with other
+  JSON spacing is rewritten in Vial's formatting (the studio warns), with the same content.
 
 ## If something goes wrong
 
