@@ -41,11 +41,12 @@ the board, and in **Settings** the layout options and QMK settings.
 
 ## Reference image
 
-**Reference image** (or **Save image** in the header) saves a PNG of one layer, the layers you choose, or all
-layers. Every key shows the character it types on an Estonian computer, its Shift and AltGr characters in
-the top corners, what it does when held in a band along the bottom, and which keys pass through to the base
-layer. A single layer is 1920 × 1080 pixels, so it fills a common screen at 100 % zoom; choose **Sharp (2×)**
-for high-resolution screens.
+**Reference image** (or **Save image** in the header) saves one PNG, `kyria-all-layers.png`, with every
+layer of the keymap, including layers that do nothing yet, whichever layer you are looking at. Every key
+shows the character it types on an Estonian computer, its Shift and AltGr characters in the top corners,
+what it does when held in a band along the bottom, and which keys pass through to the base layer. The layers
+sit in two columns; for the built-in eight-layer keymap the image is 2590 × 2545 pixels. Choose
+**Sharp (2×)** for high-resolution screens; each option shows its size in pixels.
 
 ## Keyboard shortcuts
 

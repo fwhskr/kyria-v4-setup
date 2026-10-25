@@ -22,7 +22,7 @@
   function defaultUi() {
     return {view: 'keymap', layer: 0, target: null, level: 0, pickerTab: 'chars', search: '', keyCategory: null,
       index: {macros: 0, tapdance: 0, combos: 0, overrides: 0, altrepeat: 0}, showUnused: {},
-      sheet: {mode: 'layer', layers: [], includeEmpty: false, scale: 1, actual: false}};
+      sheet: {scale: 1, actual: false}};
   }
 
   /* ---------- small pure helpers ---------- */
@@ -55,7 +55,7 @@
   /* ---------- persistence ---------- */
   function uiSnapshot() {
     const u = store.ui;
-    return {view: u.view, layer: u.layer, level: u.level, index: u.index, sheet: u.sheet,
+    return {view: u.view, layer: u.layer, level: u.level, index: u.index, sheet: {scale: u.sheet.scale, actual: u.sheet.actual},
       baselineHash: store.baselineHash, baselineKind: store.baselineKind};
   }
   function persist() {
@@ -82,13 +82,10 @@
     if (Number.isInteger(saved.layer) && saved.layer >= 0 && saved.layer < layers) u.layer = saved.layer;
     if ([0, 1, 2, 3].includes(saved.level)) u.level = saved.level;
     if (saved.index && typeof saved.index === 'object') for (const k of Object.keys(u.index)) if (Number.isInteger(saved.index[k]) && saved.index[k] >= 0) u.index[k] = saved.index[k];
+    // Older versions also saved layer filters (sheet.mode, layers, includeEmpty). The image now
+    // always holds every layer, so only the pixel size is restored and the filters are dropped.
     const sh = saved.sheet;
-    if (sh && typeof sh === 'object') {
-      if (['layer', 'chosen', 'all'].includes(sh.mode)) u.sheet.mode = sh.mode;
-      if (Array.isArray(sh.layers)) u.sheet.layers = sh.layers.filter(n => Number.isInteger(n) && n >= 0 && n < layers);
-      u.sheet.includeEmpty = sh.includeEmpty === true;
-      u.sheet.scale = sh.scale === 2 ? 2 : 1;
-    }
+    if (sh && typeof sh === 'object') u.sheet.scale = sh.scale === 2 ? 2 : 1;
     if (typeof saved.baselineHash === 'string') store.baselineHash = saved.baselineHash;
     if (['built-in', 'import', 'export'].includes(saved.baselineKind)) store.baselineKind = saved.baselineKind;
   }
@@ -166,7 +163,6 @@
     store.ui.target = null;
     store.ui.layer = 0;
     store.ui.index = {macros: 0, tapdance: 0, combos: 0, overrides: 0, altrepeat: 0};
-    store.ui.sheet.layers = [];
     store.banners.restore = null;
     persist();
     setMessage(message, 'status');

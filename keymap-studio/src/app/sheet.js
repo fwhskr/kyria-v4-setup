@@ -1,7 +1,8 @@
 /*
  * Learning reference image (UI-6, QA-5). Canvas 2D drawn from the legend model.
- * One layer: 1920 x 1080 at 1x so it is readable at 100 % on a common screen;
- * several layers: two columns. Key text is never smaller than 0.20 of the key.
+ * The image always holds every layer of the file, layers that do nothing included,
+ * whatever layer is on screen: two columns of layer panels. A file with a single layer
+ * gets 1920 x 1080 at 1x. Key text is never smaller than 0.20 of the key.
  */
 (function (KS) {
   'use strict';
@@ -10,24 +11,8 @@
   const S = A.state;
   const KEY_U = 0.92;
 
-  function isEmptyLayer(l) {
-    const f = S.fields();
-    const cellsEmpty = f.layout[l].every(row => row.every(c => c === -1 || c === 'KC_TRNS' || c === 'KC_NO'));
-    const enc = f.encoder_layout;
-    const encEmpty = !Array.isArray(enc) || !Array.isArray(enc[l]) || enc[l].every(p => !Array.isArray(p) || p.every(c => c === 'KC_TRNS' || c === 'KC_NO'));
-    return cellsEmpty && encEmpty && l !== 0;
-  }
-
-  function chosenLayers() {
-    const ui = A.store.ui, n = S.fields().layout.length;
-    if (ui.sheet.mode === 'layer') return [Math.min(ui.layer, n - 1)];
-    if (ui.sheet.mode === 'chosen') {
-      const list = ui.sheet.layers.filter(l => l < n).sort((a, b) => a - b);
-      return list.length ? list : [Math.min(ui.layer, n - 1)];
-    }
-    const all = [];
-    for (let l = 0; l < n; l++) if (ui.sheet.includeEmpty || !isEmptyLayer(l)) all.push(l);
-    return all.length ? all : [0];
+  function imageLayers() {
+    return Array.from({length: S.fields().layout.length}, (_, l) => l);
   }
 
   /* ---------- text helpers ---------- */
@@ -273,7 +258,7 @@
     ctx.fillStyle = t.app; ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
     ctx.font = `700 32px ${t.fontUi}`; ctx.fillStyle = t.text;
-    ctx.fillText('Kyria rev4 keymap, Estonian layout', margin, margin + 30); if (log) log.push({text: 'title', size: 32, role: 'title'});
+    ctx.fillText('Kyria rev4 keymap, Estonian layout', margin, margin + 30); if (log) log.push({text: 'Kyria rev4 keymap, Estonian layout', size: 32, role: 'title'});
     ctx.font = `400 18px ${t.fontUi}`; ctx.fillStyle = t.muted;
     ctx.fillText(`${S.ws().filename}, ${new Date().toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'})}`, margin, margin + 60);
     let y = headerH;
@@ -284,7 +269,8 @@
         A.keycap.roundRect(ctx, x, y, panelW, rowH, 14);
         ctx.fillStyle = t.panel; ctx.fill();
         ctx.font = `700 26px ${t.fontUi}`; ctx.fillStyle = S.layerColor(pnl.l); ctx.textAlign = 'left';
-        ctx.fillText(`${pnl.l}  ${S.layerName(pnl.l)}`, x + pad, y + pad + 24); if (log) log.push({text: 'panel title', size: 26, role: 'title'});
+        const title = `${pnl.l}  ${S.layerName(pnl.l)}`;
+        ctx.fillText(title, x + pad, y + pad + 24); if (log) log.push({text: title, size: 26, role: 'title'});
         ctx.font = `400 16px ${t.fontUi}`; ctx.fillStyle = t.muted;
         const reached = A.board.reachedBy(pnl.l);
         ctx.fillText(ctx.measureText(reached).width > panelW - pad * 2 ? A.keycap.truncate(reached, 16, panelW - pad * 2, 400, t.fontUi) : reached, x + pad, y + pad + 50); if (log) log.push({text: reached, size: 16, role: 'note'});
@@ -318,31 +304,26 @@
   }
 
   function render(opts) {
-    const layers = opts && opts.layers ? opts.layers : chosenLayers();
+    const layers = opts && opts.layers ? opts.layers : imageLayers();
     const scale = opts && opts.scale ? opts.scale : 1;
     const log = opts && opts.log ? opts.log : null;
     return layers.length === 1 ? renderSingle(layers[0], scale, log) : renderGrid(layers, scale, log);
   }
 
-  function fileName(layers) {
-    if (layers.length === 1) return `kyria-${A.dom.slug(S.layerName(layers[0]))}.png`;
-    if (layers.length === S.fields().layout.length || A.store.ui.sheet.mode === 'all') return 'kyria-all-layers.png';
-    return `kyria-layers-${layers.join('-')}.png`;
-  }
+  function fileName() { return 'kyria-all-layers.png'; }
 
   function save() {
     const ui = A.store.ui;
-    const layers = chosenLayers();
     let out;
     A.store.sheetBusy = true;
-    try { out = render({layers, scale: ui.sheet.scale}); }
-    catch (e) { A.store.sheetBusy = false; S.setMessage(`The image couldn\u2019t be drawn: ${e.message || 'unknown error'} Try one layer at 1\u00d7.`, 'alert'); S.render(); return; }
-    const name = fileName(layers);
+    try { out = render({layers: imageLayers(), scale: ui.sheet.scale}); }
+    catch (e) { A.store.sheetBusy = false; S.setMessage(`The image couldn\u2019t be drawn: ${(e.message || 'unknown error').replace(/\.?$/, '.')} Choose Normal (1\u00d7) under Reference image and try again.`, 'alert'); S.render(); return; }
+    const name = fileName();
     S.setMessage('Saving the image\u2026', 'status'); S.render();
     try {
       out.canvas.toBlob(blob => {
         A.store.sheetBusy = false;
-        if (!blob) { S.setMessage('Your browser couldn\u2019t create an image this large. Choose one layer or 1\u00d7 and try again.', 'alert'); S.render(); return; }
+        if (!blob) { S.setMessage('Your browser couldn\u2019t create an image this large. Choose Normal (1\u00d7) under Reference image and try again.', 'alert'); S.render(); return; }
         A.dom.download(blob, name);
         S.setMessage(`Saved ${name} (${out.canvas.width} \u00d7 ${out.canvas.height} pixels).`, 'status'); S.render();
       }, 'image/png');
@@ -354,29 +335,22 @@
 
   /* ---------- view ---------- */
   function renderView(main) {
-    const ui = A.store.ui, n = S.fields().layout.length;
-    const modeName = A.dom.id('mode'), scaleName = A.dom.id('scale');
-    const setSheet = (patch, fid) => { Object.assign(ui.sheet, patch); S.persistUi(); S.render(fid); };
-    const layers = chosenLayers();
-    const options = h('form', {class: 'panel sheet-options', on: {submit: e => { e.preventDefault(); save(); }}},
-      h('h2', {class: 'section-title', text: 'Image options'}),
-      h('fieldset', {class: 'radio-list'}, h('legend', {class: 'field-label', text: 'Layers'}),
-        [['layer', `This layer (${ui.layer} ${S.layerName(ui.layer)})`], ['chosen', 'Layers I choose'], ['all', 'All layers']].map(([v, text]) => h('label', {class: 'toggle'},
-          h('input', {type: 'radio', name: modeName, checked: ui.sheet.mode === v, 'data-fid': `mode:${v}`, on: {change: () => setSheet({mode: v}, `mode:${v}`)}}), h('span', {text})))),
-      ui.sheet.mode === 'chosen' ? h('fieldset', {class: 'radio-list'}, h('legend', {class: 'field-label', text: 'Choose layers'}),
-        Array.from({length: n}, (_, i) => h('label', {class: 'toggle'}, h('input', {type: 'checkbox', checked: ui.sheet.layers.includes(i), 'data-fid': `pick:${i}`,
-          on: {change: e => setSheet({layers: e.target.checked ? ui.sheet.layers.concat(i) : ui.sheet.layers.filter(x => x !== i)}, `pick:${i}`)}}), h('span', {text: `${i} ${S.layerName(i)}`})))) : null,
-      ui.sheet.mode === 'all' ? h('label', {class: 'toggle'}, h('input', {type: 'checkbox', checked: ui.sheet.includeEmpty, 'data-fid': 'include-empty',
-        on: {change: e => setSheet({includeEmpty: e.target.checked}, 'include-empty')}}), h('span', {text: 'Include layers that do nothing'})) : null,
-      h('fieldset', {class: 'radio-list'}, h('legend', {class: 'field-label', text: 'Pixel size'}),
-        [[1, 'Normal (1\u00d7): one layer fills a 1920 \u00d7 1080 screen at 100 %'], [2, 'Sharp (2\u00d7): for high-resolution screens']].map(([v, text]) => h('label', {class: 'toggle'},
-          h('input', {type: 'radio', name: scaleName, checked: ui.sheet.scale === v, 'data-fid': `scale:${v}`, on: {change: () => setSheet({scale: v}, `scale:${v}`)}}), h('span', {text})))),
-      h('button', {type: 'submit', class: 'button button-primary', 'data-fid': 'save-png', disabled: !!A.store.sheetBusy, text: A.store.sheetBusy ? 'Saving\u2026' : 'Save PNG'}),
-      h('p', {class: 'hint', text: `Saves ${fileName(layers)}. Names and colours come from this browser.`}));
+    const ui = A.store.ui, layers = imageLayers();
+    const scaleName = A.dom.id('scale');
+    const setScale = v => { ui.sheet.scale = v; S.persistUi(); S.render(`scale:${v}`); };
     const previewWrap = h('div', {class: ['sheet-preview', ui.sheet.actual && 'is-actual']});
     let out = null;
     try { out = render({layers, scale: 1}); }
     catch (e) { previewWrap.append(h('p', {class: 'notice notice-danger', text: `The preview couldn\u2019t be drawn: ${e.message}`})); }
+    const size = f => out ? `: ${out.width * f} \u00d7 ${out.height * f} pixels` : '';
+    const contents = layers.length > 1 ? `all ${layers.length} layers, including layers that do nothing` : 'its only layer';
+    const options = h('form', {class: 'panel sheet-options', on: {submit: e => { e.preventDefault(); save(); }}},
+      h('h2', {class: 'section-title', text: 'Image options'}),
+      h('fieldset', {class: 'radio-list'}, h('legend', {class: 'field-label', text: 'Pixel size'}),
+        [[1, `Normal (1\u00d7)${size(1)}`], [2, `Sharp (2\u00d7)${size(2)}, for high-resolution screens`]].map(([v, text]) => h('label', {class: 'toggle'},
+          h('input', {type: 'radio', name: scaleName, checked: ui.sheet.scale === v, 'data-fid': `scale:${v}`, on: {change: () => setScale(v)}}), h('span', {text})))),
+      h('button', {type: 'submit', class: 'button button-primary', 'data-fid': 'save-png', disabled: !!A.store.sheetBusy, text: A.store.sheetBusy ? 'Saving\u2026' : 'Save PNG'}),
+      h('p', {class: 'hint', text: `Saves ${fileName()} with ${contents}. Names and colours come from this browser.`}));
     if (out) {
       out.canvas.setAttribute('role', 'img');
       out.canvas.setAttribute('aria-label', `Preview of the reference image for ${layers.map(l => S.layerName(l)).join(', ')}, ${out.width} by ${out.height} pixels at 1\u00d7.`);
@@ -384,7 +358,7 @@
       previewWrap.append(out.canvas);
     }
     main.append(h('h1', {class: 'view-title', text: 'Reference image'}),
-      h('p', {class: 'view-lead', text: 'A picture of your layers to keep on screen while you learn the Kyria. Every key shows what your Estonian computer types.'}),
+      h('p', {class: 'view-lead', text: 'A picture of all your layers to keep on screen while you learn the Kyria. Every key shows what your Estonian computer types.'}),
       h('div', {class: 'sheet-grid'}, options,
         h('section', {class: 'panel sheet-view', 'aria-label': 'Preview'},
           h('div', {class: 'sheet-view-head'},
@@ -394,5 +368,5 @@
           previewWrap)));
   }
 
-  A.sheet = {render, save, renderView, chosenLayers, isEmptyLayer, fileName};
+  A.sheet = {render, save, renderView, imageLayers, fileName};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});

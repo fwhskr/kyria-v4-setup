@@ -141,7 +141,7 @@
           text: errors ? `${T.plural(errors, 'error', 'errors')}${warnings ? `, ${warnings} warn.` : ''}` : T.plural(warnings || list.length, warnings ? 'warning' : 'note', warnings ? 'warnings' : 'notes'),
           'aria-label': `Issues: ${errors} errors, ${warnings} warnings`, on: {click: openIssues}}) : null,
         h('button', {type: 'button', class: 'button', 'data-fid': 'open', text: 'Open .vil\u2026', title: 'Open a Vial file (Ctrl+O)', on: {click: () => fileInput.click()}}),
-        h('button', {type: 'button', class: 'button', 'data-fid': 'save-image', text: 'Save image', title: 'Save the reference image with the options from the Reference image section',
+        h('button', {type: 'button', class: 'button', 'data-fid': 'save-image', text: 'Save image', title: 'Save a PNG of all layers (pixel size is set under Reference image)',
           on: {click: () => A.sheet.save()}}),
         h('button', {type: 'button', class: 'button button-primary', 'data-fid': 'export', text: 'Export .vil', title: 'Download the edited Vial file (Ctrl+S)', on: {click: exportVil}})));
   }
