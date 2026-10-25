@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:53:00Z'
+updated_date: '2026-10-25T18:57:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -57,4 +57,6 @@ Created by Nova 2026-10-25 — audited389f0b5 four owned files, clean and no dif
 Created by Nova 2026-10-25 — key echo at c6a4e68 PASS97probes; final corrected tests recheck active same echo ses_e8bb015ebffe4pvAYVdi407BxL on4594bbe. Narrow release-critical compatibility question identified during artifact audit: source comments claim RSA/SAGR/RCS/RCG wrappers accepted, tests author earlier reported no RSA in Vial. Researcher ses_e8bd4da49ffe0PI0txoA41BKHW active exact-upstream function registry check; no speculative change before evidence.
 
 Created by Nova 2026-10-25 — final frozen4594bbe echo115/115PASS0skip, syntax4filesPASS, semantic code identical prior97probe revision (catalog comments only). Narrow upstream wrapper registry compatibility research remains release gate; no task Done until reconciled and final publication.
+
+Created by Nova 2026-10-25 — release wrapper question resolved by exact Vial any_keycode.py function registry: RSA/SAGR/RCS/RCG and modtap/nested forms accepted; picker absence is not parser absence. No fix needed. Researcher complete; final115/115 echo +97independent semantic probes bind unchanged code, release compatibility concern cleared.
 <!-- SECTION:NOTES:END -->
