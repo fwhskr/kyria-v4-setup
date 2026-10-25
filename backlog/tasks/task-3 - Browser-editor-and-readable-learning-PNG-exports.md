@@ -1,11 +1,11 @@
 ---
 id: TASK-3
 title: Browser editor and readable learning PNG exports
-status: In Progress
+status: Done
 assignee:
   - '@artist'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:57:00Z'
+updated_date: '2026-10-25T19:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -30,10 +30,10 @@ Verification: artist functional and visual self-checks in installed Chromium and
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Open directly in browser and use Estonian character-first key assignment, layers, composer, undo/redo and persistent local edits with clear errors
-- [ ] #2 Edit present macros, tap dances, combos, overrides, alt repeat, encoder mappings, layout options and settings; unknown/raw entries stay read-only and preserved
-- [ ] #3 Export .vil and readable current/all-layer PNG showing actual Estonian outputs, legible holds/modifiers and supplementary matrix/encoder mappings
-- [ ] #4 Functional and visual checks pass with no network dependency; README explains browser use, Vial import and limits for public users
+- [x] #1 Open directly in browser and use Estonian character-first key assignment, layers, composer, undo/redo and persistent local edits with clear errors
+- [x] #2 Edit present macros, tap dances, combos, overrides, alt repeat, encoder mappings, layout options and settings; unknown/raw entries stay read-only and preserved
+- [x] #3 Export .vil and readable current/all-layer PNG showing actual Estonian outputs, legible holds/modifiers and supplementary matrix/encoder mappings
+- [x] #4 Functional and visual checks pass with no network dependency; README explains browser use, Vial import and limits for public users
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -54,4 +54,12 @@ Native artist ses_e8bd2c3f3ffeIkJJIjITof52zY active in design phase; branch stud
 Native artist ses_e8bd2c3f3ffeIkJJIjITof52zY continued for TASK-3 implementation. Design ee7416f accepted; final design under keymap-studio. UI owns no root README. Artist located cached Playwright Chromium+Firefox; use own functional+visual checks after integrated core.
 
 Created by Nova 2026-10-25 — audited artist UI2af7b9f17ownedfiles/no unintended paths. Initial artist Chromium+Firefox54/54functional each,57/56visual with764c32b copied core; final same session continued to merge landed main and run directly from committed UI worktree. Native ses_e8bd2c3f3ffeIkJJIjITof52zY active; final screenshot/PNG parent audit and public push pending.
+
+Final artist gate4738e65:54/54 functional each Chromium/Firefox;57/57 Chromium and56/56 Firefox visual across five widths, axe no serious/critical, zero network/console/page errors. Frozen files unchanged. Parent inspected single/all-layer PNGs and app; all-layer empty Spare omission intentional with include-empty toggle. Landed2803ead byte-identical keymap-studio tree, node syntax all app files PASS.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Offline direct-file editor and readable1920x1080/2x/all-layer PNG exports delivered and documented. Artist functional+visual gates passed on exact committed app; merged unchanged2803ead. Zen itself not tested; Firefox and Chromium passed. No hardware transport.
+<!-- SECTION:FINAL_SUMMARY:END -->

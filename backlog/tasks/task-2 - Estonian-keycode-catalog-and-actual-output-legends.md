@@ -1,11 +1,11 @@
 ---
 id: TASK-2
 title: Estonian keycode catalog and actual-output legends
-status: In Progress
+status: Done
 assignee:
   - '@general'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:57:00Z'
+updated_date: '2026-10-25T19:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -30,9 +30,9 @@ Verification: bounded Node parse/format/output checks and affected node --check;
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Normal, Shift, AltGr and Shift+AltGr outputs match the existing Estonian xkb table including dead accents
-- [ ] #2 Composed modifiers, mod-tap, layer-tap, layer functions, macros and tap dance parse and render real outputs; invalid typed names are rejected without changing imported unknown codes
-- [ ] #3 Legends expose hold behavior, inheritance, macro approximations and unknown fallback honestly
+- [x] #1 Normal, Shift, AltGr and Shift+AltGr outputs match the existing Estonian xkb table including dead accents
+- [x] #2 Composed modifiers, mod-tap, layer-tap, layer functions, macros and tap dance parse and render real outputs; invalid typed names are rejected without changing imported unknown codes
+- [x] #3 Legends expose hold behavior, inheritance, macro approximations and unknown fallback honestly
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -60,3 +60,9 @@ Created by Nova 2026-10-25 — final frozen4594bbe echo115/115PASS0skip, syntax4
 
 Created by Nova 2026-10-25 — release wrapper question resolved by exact Vial any_keycode.py function registry: RSA/SAGR/RCS/RCG and modtap/nested forms accepted; picker absence is not parser absence. No fix needed. Researcher complete; final115/115 echo +97independent semantic probes bind unchanged code, release compatibility concern cleared.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented Estonian xkb-backed outputs, character lookup, Vial keycode composition and honest legends. Echo:115/115 targeted tests and97 independent probes; exact Vial source confirms wrapper compatibility. Landed2803ead. Cosmetic GUI/Super naming remains; imported out-of-range macro/layer warning limitation recorded, no follow-up scope added.
+<!-- SECTION:FINAL_SUMMARY:END -->

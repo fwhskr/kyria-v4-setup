@@ -1,11 +1,11 @@
 ---
 id: TASK-4
 title: Contract tests for lossless Vial and Estonian editing
-status: In Progress
+status: Done
 assignee:
   - '@small'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:46:00Z'
+updated_date: '2026-10-25T19:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -30,9 +30,9 @@ Verification: tests fail meaningfully before implementation and pass against fin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Fixtures and tests protect exact UID and Vial-byte roundtrips, malformed input, unknown/raw fields, absent required fields and hostile strings
-- [ ] #2 Tests cover immutable operations, atomic batch errors, history bounds, storage validation and all feature schemas
-- [ ] #3 Tests independently check Estonian levels/dead keys and canonical keycode/legend behavior; studio-test runs in existing Node without installation
+- [x] #1 Fixtures and tests protect exact UID and Vial-byte roundtrips, malformed input, unknown/raw fields, absent required fields and hostile strings
+- [x] #2 Tests cover immutable operations, atomic batch errors, history bounds, storage validation and all feature schemas
+- [x] #3 Tests independently check Estonian levels/dead keys and canonical keycode/legend behavior; studio-test runs in existing Node without installation
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -60,3 +60,9 @@ Created by Nova 2026-10-25 — final committed tests177f679 merged into verifica
 
 Created by Nova 2026-10-25 — independent echo PASS frozen764c32b5:250PASS0FAIL1optional env-gated external export; oracle corrections independently confirmed xkb/Python. Tests saved and landed locally74a1bc99; final public push after UI completion.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Delivered dependency-free Node contract suite and source-backed fixture oracles. Independent echo verified integrated core and tests; final landed2803ead studio-test:251 tests,250 pass,0 fail,1 optional external-file skip. Required owner fixture and backup roundtrips executed; no assertions weakened.
+<!-- SECTION:FINAL_SUMMARY:END -->

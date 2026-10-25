@@ -1,11 +1,11 @@
 ---
 id: TASK-1
 title: Lossless offline Vial document editing core
-status: In Progress
+status: Done
 assignee:
   - '@engineer'
 created_date: '2026-10-25T18:00:00Z'
-updated_date: '2026-10-25T18:46:00Z'
+updated_date: '2026-10-25T19:00:00Z'
 labels: []
 dependencies: []
 documentation:
@@ -30,9 +30,9 @@ Verification: bounded node behavior/static checks; independent echo against exac
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Unedited Vial import/export preserves exact UID and unknown fields; malformed JSON, incompatible matrix and missing required Vial fields produce errors
-- [ ] #2 Every supported edit operation is atomic, immutable and count preserving, with working undo/redo and storage recovery
-- [ ] #3 Original keymap is bundled without UID rounding; all 60 cells and original geometry remain accessible
+- [x] #1 Unedited Vial import/export preserves exact UID and unknown fields; malformed JSON, incompatible matrix and missing required Vial fields produce errors
+- [x] #2 Every supported edit operation is atomic, immutable and count preserving, with working undo/redo and storage recovery
+- [x] #3 Original keymap is bundled without UID rounding; all 60 cells and original geometry remain accessible
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -62,3 +62,9 @@ Created by Nova 2026-10-25 — engineer parser fix8142fbb audited json.js-only d
 
 Created by Nova 2026-10-25 — integrated echo on frozen764c32b54007a5a06d07fa86e04abf7a172a4b4d PASS incl real-catalog edits and250/0 contract suite; exact source landed locally via merge74a1bc99e430fc44a2c4f5775f47cdd5b87f7bad. Publication awaits finished artist UI/browser/PNG gates as owner requested. No device work.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented lossless Vial codec, exact UID/unknown preservation, immutable atomic edits, history and validated storage. Independent echo passed frozen integrated core including 70 real-catalog probes. Landed 2803ead; final studio suite 250 pass, 0 fail, 1 optional external-file skip. No device access.
+<!-- SECTION:FINAL_SUMMARY:END -->
