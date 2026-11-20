@@ -3,6 +3,42 @@
 Firmware, tools and backups for a **splitkb.com Halcyon Kyria rev4** with the
 Halcyon TFT display on both halves (Vial, QMK).
 
+## Start here
+
+Pick your path; you do not need all three.
+
+| Path | Needs | Do this |
+| --- | --- | --- |
+| **1. View or learn** | Nothing: no install, no keyboard | Study the keymap picture below, then open Keymap Studio's built-in example ([how to open it](keymap-studio/README.md)) |
+| **2. Change or import a layout in Vial** | Vial app, your keyboard | **Save the current layout first** (see [Changing the layout](#changing-the-layout)), then edit in Vial or the studio and load the `.vil` in Vial |
+| **3. Optional: helper, backup/restore, build, flash** | Compatible hardware + Linux computer | See [After reinstalling the computer](#after-reinstalling-the-computer) and [Updating the firmware](#updating-the-firmware) |
+
+A layout change in Vial updates the keyboard's saved configuration, not its
+firmware. If you flash a new firmware build, be ready to reload your layout.
+
+[![Backed-up keymap, all 8 layers](images/keymap.png)](images/keymap.png)
+
+*All eight layers from the [repository backup](backups/README.md), including
+the transparent final layer. Legends assume the standard Estonian layout
+(xkb `ee`, with dead keys). The picture is a snapshot, not a live reading
+or the firmware's default layout. Click it for full size.*
+
+## What this fits — and what it does not
+
+- **Keyboard:** splitkb.com Halcyon Kyria **rev4** with the Halcyon TFT
+  display on both halves. Don't flash this firmware on other models,
+  revisions, or module configurations.
+- **This repository's backups describe the owner's keyboard.** Your keyboard
+  may have a different layout. Compare it read-only first with
+  `make check-keyboard`; `make restore` checks the Vial identity and layer
+  and macro capacities and refuses to change anything on a mismatch.
+- **Computer side (path 3 only):** Linux. The screen helper is a systemd
+  user service and its keyboard-language detection needs Hyprland; on other
+  desktops the language row stays empty and US characters are shown. The
+  keyboard itself types without any of this; only the screen extras need it.
+
+## The screens
+
 ![Left and right screens](images/preview-pairs.png)
 
 - **Right screen:** the last key you pressed, large. Letters are always
@@ -32,7 +68,8 @@ data by `make preview`, not mock-ups.
 
 | Path | What |
 | --- | --- |
-| `release/kyria_rev4_keypress_display.uf2` | The firmware currently on the keyboard (both halves) |
+| `images/keymap.png` | All 8 layers of the backed-up layout, drawn from `backups/live-keymap.json`; legends assume standard Estonian |
+| `release/kyria_rev4_keypress_display.uf2` | The project's prebuilt firmware for both halves |
 | `backups/` | The keyboard's keymap, macros and Vial settings, plus Vial exports and splitkb's stock firmware ([details](backups/README.md)) |
 | `host/` | The computer helper, its login service, the device permission rule and `layer-names.txt` |
 | `firmware/` | QMK userspace: the `keypress_hlc` keymap and splitkb's Halcyon modules ([details](firmware/README.md)) |
@@ -44,7 +81,8 @@ data by `make preview`, not mock-ups.
 ## After reinstalling the computer
 
 The keyboard keeps its firmware and layout; only the computer side needs
-setting up again.
+setting up again. This whole section is optional: the keyboard types with or
+without the helper.
 
 1. Install the basics (openSUSE shown; other distributions have the same
    packages): `sudo zypper install git python3 gcc make zstd libhidapi-hidraw0 libxkbcommon0`
@@ -69,15 +107,20 @@ is needed. Up to 9 letters show full size, up to 12 in smaller text.
 
 ## Changing the layout
 
+**Save your original layout first.** In [Vial](https://get.vial.today/), use
+*File → Save current layout* and keep that `.vil` somewhere safe. Layouts
+can contain macro text, so review exports before sharing them publicly.
+
 For **Estonian character-first editing and readable typing-reference images**, use
 [Keymap Studio](keymap-studio/README.md). Download this repository, then open
 `keymap-studio/index.html` in your browser — no installation, server or keyboard
 connection is needed. Export a `.vil` file and load it using Vial when you are
-ready to apply your changes. The studio does not flash or write to your keyboard.
+ready to apply your changes: *File → Load saved layout*. The studio does not
+flash or write to your keyboard. Keep your original `.vil` for rollback.
 
-Use [Vial](https://get.vial.today/) as usual. To keep a copy here, save it in
-Vial (*File → Save current layout*) into `backups/`, or run `make backup` to
-read the keymap and settings straight from the keyboard. Commit the result.
+Want to copy this setup? The picture is a reference, not an importable file.
+The `.vil` in `backups/` is older and does **not** match the picture. See the
+[backup guide](backups/README.md) for what can be restored and where.
 
 ## Updating the firmware
 
@@ -136,6 +179,19 @@ system's keyboard library) — the output is byte-for-byte reproducible.
 
 Adding a keyboard language: add it to `LAYOUTS` in `tools/generate_layouts.py`,
 run `make assets test firmware`, and flash.
+
+## Troubleshooting
+
+| Symptom | What it means | Try |
+| --- | --- | --- |
+| `make backup` / `make restore` / `make check-keyboard` says *Expected exactly one Halcyon Kyria raw HID interface* | No matching device found, or more than one is connected | Connect exactly one Halcyon Kyria rev4 and check that it is detected by Vial |
+| `make restore` says *Vial identity mismatch* (or layer, macro or entry capacity mismatch) and *no changes made* | The connected keyboard is not the one these backups were taken from (for example different firmware) | Stop; do not force it. Save that keyboard's own layout first (see [Changing the layout](#changing-the-layout)), and only restore backups that belong to it |
+| Helper logs *Keyboard found but not opened* or *Keyboard write failed* | The computer cannot talk to the keyboard | Run `make udev` and check you are in the `input` group (`groups`); the group change needs a new login session |
+| Helper logs *Keyboard firmware has no display commands* | The helper's display protocol is not available | If you want the screen extras, confirm the hardware matches before [updating the firmware](#updating-the-firmware); no update is needed to type |
+| Screen rows stay empty; US characters shown | The helper is not running, or it cannot detect the language | Start it with `make install-helper`. Without Hyprland the language row stays empty by design; the keyboard still works fully |
+| `make flash` says *No RPI-RP2 drive appeared within 2 minutes* | That half never entered its bootloader | Plug USB into the half to update, double-press *its* reset button, and start `make flash` again; flash each half separately |
+| `make restore` cannot unlock | The unlock keys are not held | Hold **B** and **J** together on the keyboard until told to release; release them after the keyboard locks again |
+| Studio says files are missing, or will not finish in the browser | The studio folder is incomplete, or browser storage is blocked or full | Open `index.html` from the complete `keymap-studio` folder and export your `.vil`; see [Keymap Studio](keymap-studio/README.md) |
 
 ## Licence
 
