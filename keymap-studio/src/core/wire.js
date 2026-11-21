@@ -322,5 +322,165 @@
     if ((n & 0xff00) === 0x7700) return 'M' + (n & 255);
     return unknown();
   }
-  KS.wire = {encode, decode};
+  const hex = bytes => Array.from(bytes, x => x.toString(16).padStart(2, '0')).join('');
+  const unhex = s => {
+    if (typeof s !== 'string' || !/^(?:[0-9a-f]{2})*$/i.test(s)) throw Error('Invalid hexadecimal buffer');
+    return s.match(/../g)?.map(x => parseInt(x, 16)) || [];
+  };
+  function uint(n, width) {
+    if (!Number.isSafeInteger(n) || n < 0 || n >= 2 ** (width * 8)) throw Error('Value out of range');
+    return Array.from({length: width}, (_, i) => Math.floor(n / 2 ** (8 * i)) & 255);
+  }
+  const le = n => uint(n, 2);
+  const be = n => le(n).reverse();
+  const cell = v => Number.isInteger(v) && v >= 0 && v <= 65535 ? v : encode(v);
+  const sectionNames = ['tap_dance', 'combo', 'key_override', 'alt_repeat_key'];
+  function dynamicEntry(kind, entry) {
+    if (kind < 2) {
+      if (!Array.isArray(entry) || entry.length !== 5) throw Error('Invalid dynamic entry');
+      return hex(entry.flatMap((v, i) => le(kind === 0 && i === 4 ? v : cell(v))));
+    }
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw Error('Invalid dynamic entry');
+    const fields = kind === 2 ? ['trigger', 'replacement', 'layers', 'trigger_mods', 'negative_mod_mask', 'suppressed_mods', 'options'] : ['keycode', 'alt_keycode', 'allowed_mods', 'options'];
+    return hex(fields.flatMap((field, i) => uint(i < 2 ? cell(entry[field]) : entry[field], i < (kind === 2 ? 3 : 2) ? 2 : 1)));
+  }
+  function emptyExtra(kind, entry) {
+    if (kind < 2) return Array.isArray(entry) && entry.length === 5 && entry.slice(0, kind === 0 ? 4 : 5).every(x => cell(x) === 0);
+    if (!entry || typeof entry !== 'object') return false;
+    return kind === 2 ? cell(entry.trigger) === 0 && cell(entry.replacement) === 0 : cell(entry.keycode) === 0 && cell(entry.alt_keycode) === 0;
+  }
+  function macroBytes(macros) {
+    const out = [];
+    if (!Array.isArray(macros)) throw Error('Invalid macro list');
+    for (const actions of macros) {
+      if (!Array.isArray(actions)) throw Error('Invalid macro');
+      for (const action of actions) {
+        if (!Array.isArray(action)) throw Error('Invalid macro action');
+        const [kind, value] = action;
+        if (kind === 'text' && action.length === 2 && typeof value === 'string') {
+          const bytes = Array.from(new TextEncoder().encode(value));
+          if (bytes.some(x => x === 0 || x === 1)) throw Error('Macro text contains a reserved byte');
+          out.push(...bytes);
+        } else if (kind === 'delay' && action.length === 2 && Number.isInteger(value) && value >= 0 && value <= 65024) {
+          out.push(1, 4, value % 255 + 1, Math.floor(value / 255) + 1);
+        } else if (['tap', 'down', 'up'].includes(kind) && action.length > 1) {
+          const op = {tap:1, down:2, up:3}[kind];
+          for (const v of action.slice(1)) {
+            let n = cell(v);
+            if (n < 256) {
+              if (n === 0) throw Error('Macro keycode contains a terminator');
+              out.push(1, op, n);
+            } else {
+              if ((n & 255) === 0) n = 0xff00 | (n >> 8);
+              out.push(1, op + 4, n & 255, n >> 8);
+            }
+          }
+        } else throw Error('Invalid macro action');
+      }
+      out.push(0);
+    }
+    return out;
+  }
+  function build(doc, current) {
+    const f = doc && doc.fields || {}, unsupportedItems = [], names = {};
+    const result = {keymap: current.keymap, macros:null, dynamic:null, encoders:null, layoutOptions:null, settings:null, unsupported:unsupportedItems};
+    const attempt = (path, fn) => {
+      try { return fn(); } catch (error) { unsupportedItems.push({path, code:error.code || 'E_WIRE_UNSUPPORTED', message:error.message}); return null; }
+    };
+    const matrix = attempt('layout', () => {
+      const bytes = unhex(current.keymap);
+      if (bytes.length !== current.layers * current.rows * current.cols * 2 || !Array.isArray(f.layout) || f.layout.length !== current.layers) throw Error('Keymap dimensions differ');
+      f.layout.forEach((layer, l) => {
+        if (!Array.isArray(layer) || layer.length !== current.rows) throw Error('Keymap row count differs');
+        layer.forEach((row, r) => {
+          if (!Array.isArray(row) || row.length !== current.cols) throw Error('Keymap column count differs');
+          row.forEach((v, c) => {
+            if (v === -1 || v === '-1') return;
+            const path = `layout[${l}][${r}][${c}]`;
+            attempt(path, () => { const n = cell(v), offset = ((l * current.rows + r) * current.cols + c) * 2; bytes.splice(offset, 2, ...be(n)); names[offset / 2] = typeof v === 'string' ? v : decode(n); });
+          });
+        });
+      });
+      return hex(bytes);
+    });
+    if (matrix !== null) result.keymap = matrix;
+    if (Object.hasOwn(f, 'macro')) result.macros = attempt('macro', () => {
+      const bytes = macroBytes(f.macro);
+      if (!Number.isSafeInteger(current.macroSize) || current.macroSize < 0 || bytes.length > current.macroSize) throw Error('Macros exceed keyboard buffer');
+      return hex(bytes) + '00'.repeat(current.macroSize - bytes.length);
+    });
+    if (sectionNames.some(k => Object.hasOwn(f, k))) result.dynamic = attempt('dynamic', () => {
+      if (!Array.isArray(current.dynamic) || !Array.isArray(current.dynamicCounts) || current.dynamic.length !== 4 || current.dynamicCounts.length !== 4) throw Error('Invalid dynamic state');
+      return current.dynamic.map((entries, kind) => {
+        if (!Array.isArray(entries) || entries.length !== current.dynamicCounts[kind]) throw Error('Dynamic counts differ');
+        const key = sectionNames[kind];
+        if (!Object.hasOwn(f, key)) return entries.slice();
+        if (!Array.isArray(f[key])) throw Error('Invalid ' + key);
+        const out = entries.slice();
+        f[key].forEach((entry, i) => attempt(`${key}[${i}]`, () => {
+          if (i >= out.length) { if (!emptyExtra(kind, entry)) throw Error('Entry exceeds keyboard capacity'); return; }
+          out[i] = dynamicEntry(kind, entry);
+        }));
+        return out;
+      });
+    });
+    if (Object.hasOwn(f, 'encoder_layout')) result.encoders = attempt('encoder_layout', () => {
+      if (!Array.isArray(f.encoder_layout) || !Array.isArray(current.encoders) || f.encoder_layout.length !== current.layers || current.encoders.length !== current.layers) throw Error('Encoder layer counts differ');
+      return current.encoders.map((layer, l) => {
+        if (!Array.isArray(f.encoder_layout[l]) || layer.length !== f.encoder_layout[l].length) throw Error('Encoder counts differ');
+        return layer.map((old, i) => attempt(`encoder_layout[${l}][${i}]`, () => {
+          const pair = f.encoder_layout[l][i];
+          if (!Array.isArray(pair) || pair.length !== 2) throw Error('Invalid encoder pair');
+          const previous = unhex(old);
+          if (previous.length !== 4) throw Error('Invalid current encoder');
+          return hex(pair.flatMap((v, direction) => v === -1 ? previous.slice(direction * 2, direction * 2 + 2) : be(cell(v))));
+        }) ?? old);
+      });
+    });
+    if (Object.hasOwn(f, 'layout_options')) result.layoutOptions = attempt('layout_options', () => hex(uint(f.layout_options, 4).reverse()));
+    if (Object.hasOwn(f, 'settings')) result.settings = attempt('settings', () => {
+      if (!Array.isArray(f.settings)) throw Error('Invalid settings');
+      const widths = {};
+      for (const tab of KS.QMK_SETTINGS.tabs) for (const field of tab.fields) widths[field.qsid] = field.width || 1;
+      const out = {};
+      for (const [id, value] of f.settings) attempt(`settings[${id}]`, () => {
+        if (!widths[id]) throw Error('Unknown setting width');
+        if (!Object.hasOwn(current.settings || {}, id)) throw Error('Setting is unavailable on keyboard');
+        out[id] = hex(uint(value, widths[id]));
+      });
+      return out;
+    });
+    Object.defineProperty(result, '_names', {value:names});
+    return result;
+  }
+  function diff(current, target) {
+    const changes = [], before = unhex(current.keymap), after = unhex(target.keymap);
+    if (before.length !== after.length) throw Error('Keymap lengths differ');
+    for (let i = 0; i < before.length; i += 2) {
+      const a = before[i] * 256 + before[i + 1], b = after[i] * 256 + after[i + 1], index = i / 2;
+      if (a !== b) changes.push({kind:'key', layer:Math.floor(index / (current.rows * current.cols)), row:Math.floor(index / current.cols) % current.rows, col:index % current.cols, from:decode(a), to:target._names?.[index] || decode(b)});
+    }
+    if (target.macros != null && target.macros.toLowerCase() !== current.macros.toLowerCase()) changes.push({kind:'macro', from:current.macros, to:target.macros});
+    if (target.dynamic != null) target.dynamic.forEach((entries, k) => entries.forEach((entry, index) => {
+      const old = current.dynamic[k][index];
+      if (entry.toLowerCase() !== old.toLowerCase()) changes.push({kind:sectionNames[k], index, from:dynamicDisplay(k, old), to:dynamicDisplay(k, entry)});
+    }));
+    if (target.encoders != null) target.encoders.forEach((layer, l) => layer.forEach((entry, index) => {
+      const old = current.encoders[l][index];
+      if (entry.toLowerCase() !== old.toLowerCase()) changes.push({kind:'encoder', layer:l, index, from:encoderDisplay(old), to:encoderDisplay(entry)});
+    }));
+    if (target.layoutOptions != null && target.layoutOptions.toLowerCase() !== current.layoutOptions.toLowerCase()) changes.push({kind:'layout_options', from:current.layoutOptions, to:target.layoutOptions});
+    if (target.settings != null) for (const [qsid, value] of Object.entries(target.settings)) {
+      const old = current.settings[qsid];
+      if (old.slice(0, value.length).toLowerCase() !== value.toLowerCase()) changes.push({kind:'setting', qsid, from:old.slice(0, value.length), to:value});
+    }
+    return changes;
+  }
+  function encoderDisplay(s) { const b = unhex(s); return [decode(b[0] * 256 + b[1]), decode(b[2] * 256 + b[3])].join(', '); }
+  function dynamicDisplay(kind, s) {
+    const b = unhex(s), count = kind === 0 ? 4 : kind === 1 ? 5 : 2;
+    const keys = Array.from({length:count}, (_, i) => decode(b[2 * i] + b[2 * i + 1] * 256));
+    return keys.join(', ') + (count * 2 < b.length ? ' (' + hex(b.slice(count * 2)) + ')' : '');
+  }
+  KS.wire = {encode, decode, build, diff};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
