@@ -11,6 +11,13 @@
   - No BLOCKER.
 - Scope: Keymap Studio (`keymap-studio/`) and its publication in this repository. Firmware, host helper, tools and backups are unchanged context.
 - Subsystem LLA: [`docs/architecture/studio.md`](docs/architecture/studio.md) (READY).
+- **Amendment 2026-11-21 (owner order, ADR-S11): project-folder storage.** The studio keymap is stored in the
+  project, not the browser: `layouts/kyria.vil` (the keymap, exact `KS.vil.encode` text) and
+  `layouts/kyria.studio.json` (layer names, colours, key labels). A stdlib Python server bound to 127.0.0.1
+  (`tools/studio_server.py`, `make studio`, default port 8737) serves `keymap-studio/` and `GET`/`PUT /api/layout`;
+  every committed change is saved there. localStorage no longer holds the keymap; opened from `file://` the studio
+  edits in memory only and says so. This supersedes the "servers" non-goal, the localStorage persistence and ADR-S8
+  below; the studio still never talks to the keyboard and needs no internet.
 
 ## 2. Context
 
@@ -53,7 +60,7 @@ Remaining labelled assumptions:
 - ASSUMPTION-4 (retired, now FACT): "text" macro actions type through QMK's US tables (pinned `.deps/vial-qmk` `dd43959` `send_string.c`), with no guard for bytes ≥ 0x80. On the `ee` layout with the host Compose file, `~n` types `ñ`. User text is restricted to an allowlist. Imported unsafe text is kept verbatim with `W_MACRO_TEXT_UNSAFE` and a `?` approximate legend (LLA §4a).
 - ASSUMPTION-5: the key-override `*_mods` bytes use the QMK 8-bit mod-bit order (LCtl, LSft, LAlt, LGui, RCtl, RSft, RAlt, RGui = bit 0..7). The UI always shows the raw byte next to the decoded checkboxes.
 
-Non-goals (CONSTRAINT-1, CONSTRAINT-5): WebHID, device detection or reads, flashing, live sync, a locale switcher, non-Kyria boards, KLE parsing, a build pipeline, servers, network access, and a separate repository or deployment (CONSTRAINT-6).
+Non-goals (CONSTRAINT-1, CONSTRAINT-5): WebHID, device detection or reads, flashing, live sync, a locale switcher, non-Kyria boards, KLE parsing, a build pipeline, servers (superseded 2026-11-21 by ADR-S11: one local 127.0.0.1 server), network access, and a separate repository or deployment (CONSTRAINT-6).
 
 ## 3. Recommendation
 
@@ -109,7 +116,7 @@ flowchart LR
   BOARD --- APP
   APP -->|Op| WS
   APP -->|encode| VIL
-  APP --> LS[(localStorage v2)]
+  APP --> LS[(layouts/ via 127.0.0.1 server, ADR-S11)]
   APP --> PNG[Canvas PNG]
   DEV[future device source: not built] -.same VialDocument/Op/Capabilities.-> WS
 ```
@@ -209,9 +216,10 @@ Recorded in LLA §10 (ADR-S1..ADR-S10) and adopted here:
 - ADR-S5: Canvas PNG.
 - ADR-S6: Estonian data from `layout_tables.h`.
 - ADR-S7: transparent keys show layer 0.
-- ADR-S8: browser-only metadata.
+- ADR-S8: browser-only metadata (superseded by ADR-S11: metadata lives in `layouts/kyria.studio.json`).
 - ADR-S9: `node:test`.
 - ADR-S10: character-first primary picker.
+- ADR-S11 (2026-11-21, owner order): keymap and metadata stored in `layouts/` through a local 127.0.0.1 server.
 
 ## 17. Diagrams
 
