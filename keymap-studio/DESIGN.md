@@ -186,7 +186,7 @@ The owner's per-key image label (original feature, kept) replaces the main legen
 
 ## 7. Workspace
 
-Browser `file://` app, no server, no build. Single page with hash routes per view (`#/keymap`, `#/macros`, …) so the browser back button works.
+Served by the local studio server (`make studio`, http://127.0.0.1:8737/) or opened from `file://` (memory only), no build. Single page with hash routes per view (`#/keymap`, `#/macros`, …) so the browser back button works.
 
 ### Shell at 1440 × 900
 
@@ -309,7 +309,7 @@ File name: always `kyria-all-layers.png`.
 | Export .vil | Errors block: "Fix 1 error before exporting." with the issues drawer opened. Warnings do not block. Success: "Exported kriskyria-edited.vil." The chip changes to "Matches last export". Shortcut Ctrl+S. |
 | Edit | Every change is one undo step with a label; status line names it: "Changed Base, left home row pinky to "A, hold Shift". Ctrl+Z undoes it." Undo and redo buttons carry the label in their accessible name. |
 | Issues | Top-bar button only when issues exist ("2 issues"). Drawer lists errors then warnings, each with "Show", which navigates and selects the target. |
-| Autosave | Status line right: "Saved in this browser". Failure is persistent, not a toast: banner "This browser isn't saving your changes (storage is full or blocked). Export your .vil to keep them." |
+| Autosave | Owner order 2026-11-21: the keymap lives in `layouts/kyria.vil` (+ `layouts/kyria.studio.json` for names, colours, labels), never in browser storage. Every committed change is PUT to `/api/layout` (300 ms debounce, newest wins, flushed on pagehide). Status line right: "Loaded from layouts/kyria.vil", "Saving to layouts/kyria.vil…", "Saved to layouts/kyria.vil"; a failed PUT keeps the edits in the tab and shows a danger banner (role alert) with **Try again** and **Export .vil now**. From `file://`: warning banner "Not saved: this page was opened as a file. Run `make studio` in the kyria folder and open http://127.0.0.1:8737/ to keep changes in layouts/kyria.vil." and status "Not saved: memory only"; a failed GET shows a danger banner with the error and **Reload**, built-in layout in memory. |
 | Revert | File menu "Revert to opened file…" with confirmation naming the file. |
 | PNG export | Pending: Save PNG button busy, label "Saving…". Fonts not loaded: "The sheet fonts didn't load, so the image wasn't saved. Reload the page and try again." Canvas too large: "Your browser couldn't create an image this large. Choose Normal (1×) under Reference image and try again." Success: "Saved kyria-all-layers.png (2590 × 2545 pixels)." The header **Save image** button saves the same all-layer PNG. |
 | Empty feature list | Never shown empty: entry counts come from the file. A file without that feature: "This file has no tap dances." |
@@ -346,7 +346,7 @@ The UI never touches file text, storage or a transport directly; it reads a docu
 
 ## 13. Files and implementation plan
 
-App root: `keymap-studio/` (brief GOAL-1). Classic `<script>` files in a fixed order on one global namespace (name per `architecture.md`); no modules, no fetch, so it runs from `file://` in Gecko (owner's default browser is Zen) and Chromium. Core file names and the namespace come from `architecture.md`; these are the UI-owned files:
+App root: `keymap-studio/` (brief GOAL-1). Classic `<script>` files in a fixed order on one global namespace (name per `architecture.md`); no modules; the only fetch is same-origin `/api/layout` (CSP `connect-src 'self'`), so it still runs from `file://` in Gecko (owner's default browser is Zen) and Chromium. Core file names and the namespace come from `architecture.md`; these are the UI-owned files:
 
 | File | Content |
 |---|---|

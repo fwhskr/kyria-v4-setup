@@ -129,6 +129,8 @@
   .banner p { flex: 1 1 320px; }
   .banner-danger { background: var(--surface-raised); border-inline-start: 4px solid var(--status-danger); }
   .banner-warning { background: var(--surface-raised); border-inline-start: 4px solid var(--status-warning); }
+  .banner a { color: var(--accent); text-decoration: underline; }
+  .banner code { padding: 1px 5px; border-radius: 4px; background: var(--surface-sunken); font-size: 13px; }
   .status-messages { min-width: 0; flex: 1 1 auto; }
   .status-text:empty, .status-alert:empty { display: none; }
   .status-alert { color: var(--status-danger); font-weight: 600; }

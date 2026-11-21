@@ -203,7 +203,7 @@
           if (v === current) return;
           S.commit({type: 'meta.keyLabel', layer: t.layer, row: t.row, col: t.col, value: v || null}, v ? `Label for ${S.keyName(t.row, t.col)} set to ${v}` : `Automatic label for ${S.keyName(t.row, t.col)}`, {focus: 'key-label'});
         }}}),
-      h('p', {class: 'hint', text: 'Replaces the automatic legend only. Kept in this browser, not in the .vil file.'}));
+      h('p', {class: 'hint', text: 'Replaces the automatic legend only. Saved in layouts/kyria.studio.json, not in the .vil file.'}));
   }
 
   function render() {

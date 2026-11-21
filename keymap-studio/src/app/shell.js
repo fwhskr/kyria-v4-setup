@@ -59,7 +59,7 @@
     }
     if (!S.docState().same) {
       const v = await A.dom.choose({title: 'Replace the current keymap?',
-        body: [`Opening ${file.name} replaces the keymap in this browser. Changes since your last export or import would be lost.`],
+        body: [`Opening ${file.name} replaces ${T.keymapHere(A.store.project.path)}. Changes since your last export or import would be lost.`],
         actions: [{label: 'Cancel', value: null}, {label: 'Export first', value: 'export'}, {label: 'Replace', value: 'replace', primary: true}], danger: true});
       if (v === null) { S.setMessage('Kept the current keymap.', 'status'); render(); return; }
       if (v === 'export' && !exportVil()) return;
@@ -74,7 +74,7 @@
 
   function resetToDefault() {
     A.dom.choose({title: 'Reset to the built-in layout?', danger: true,
-      body: ['The keymap in this browser is replaced with the built-in kriskyria.vil layout. Layer names, colours and labels go back to their defaults. Export first if you want to keep your edits.'],
+      body: [`${T.keymapHere(A.store.project.path).replace(/^t/, 'T')} is replaced with the built-in kriskyria.vil layout. Layer names, colours and labels go back to their defaults. Export first if you want to keep your edits.`],
       actions: [{label: 'Cancel', value: null}, {label: 'Reset', value: 'reset', primary: true}]}).then(v => {
       if (v !== 'reset') return;
       let ws;
@@ -157,15 +157,39 @@
   }
 
   function banners() {
-    const b = A.store.banners, out = [];
-    if (b.storage) out.push(h('div', {class: 'banner banner-danger', role: 'alert'}, h('p', {text: b.storage === 'full' ? T.storageFull : T.storageBlocked}),
-      h('button', {type: 'button', class: 'button button-small', text: 'Export .vil now', on: {click: exportVil}})));
-    if (b.otherTab) out.push(h('div', {class: 'banner banner-warning', role: 'status'}, h('p', {text: T.otherTab}),
-      h('button', {type: 'button', class: 'button button-small', text: 'Reload', on: {click: () => location.reload()}}),
-      h('button', {type: 'button', class: 'button button-small button-quiet', text: 'Keep this tab\u2019s version', on: {click: () => { b.otherTab = false; S.persist(); render(); }}})));
-    if (b.restore) out.push(h('div', {class: 'banner banner-warning', role: 'status'}, h('p', {text: T.restoreFailed(b.restore)}),
-      h('button', {type: 'button', class: 'button button-small button-quiet', text: 'Dismiss', on: {click: () => { b.restore = null; render(); }}})));
+    const p = A.store.project, out = [];
+    if (p.mode === 'memory' && p.reason === 'file') out.push(h('div', {class: 'banner banner-warning', role: 'status', 'data-banner': 'file'},
+      h('p', {}, 'Not saved: this page was opened as a file. Run ', h('code', {text: 'make studio'}), ' in the kyria folder and open ',
+        h('a', {href: T.serverUrl, text: T.serverUrl}), ' to keep changes in layouts/kyria.vil.')));
+    if (p.mode === 'memory' && p.reason === 'load') out.push(h('div', {class: 'banner banner-danger', role: 'alert', 'data-banner': 'load'},
+      h('p', {text: T.loadError(p.error)}),
+      h('button', {type: 'button', class: 'button button-small', text: 'Reload', on: {click: () => location.reload()}})));
+    if (p.mode === 'server' && p.state === 'error') out.push(h('div', {class: 'banner banner-danger', role: 'alert', 'data-banner': 'save'},
+      h('p', {text: T.saveError(p.path, p.error)}),
+      h('button', {type: 'button', class: 'button button-small', 'data-fid': 'save-retry', text: 'Try again', on: {click: S.retrySave}}),
+      h('button', {type: 'button', class: 'button button-small button-quiet', text: 'Export .vil now', on: {click: exportVil}})));
     return out;
+  }
+
+  function saveState() {
+    const p = A.store.project;
+    if (p.mode !== 'server') return {text: T.memoryOnly, danger: true};
+    if (p.state === 'error') return {text: T.saveFailed, danger: true};
+    if (p.state === 'saving') return {text: T.savingTo(p.path), danger: false};
+    if (p.state === 'saved') return {text: T.savedTo(p.path), danger: false};
+    return {text: T.loadedFrom(p.path), danger: false};
+  }
+
+  // Save progress only touches the banners and the status line, so a save finishing never rebuilds
+  // a form the user is typing in.
+  function renderStatus() {
+    if (!root) return;
+    const keep = document.activeElement && bannerEl.contains(document.activeElement) ? document.activeElement.getAttribute('data-fid') : null;
+    A.dom.clear(bannerEl).append(...banners());
+    const st = saveState();
+    saveEl.textContent = st.text;
+    saveEl.className = ['save-state', st.danger && 'is-danger'].filter(Boolean).join(' ');
+    if (keep) { const el = bannerEl.querySelector(`[data-fid="${CSS.escape(keep)}"]`); if (el) el.focus({preventScroll: true}); }
   }
 
   /* ---------- render ---------- */
@@ -176,7 +200,6 @@
     const scrollY = window.scrollY;
     const pickerScroll = (document.getElementById('picker-body') || {}).scrollTop || 0;
     A.dom.clear(headerEl).append(header());
-    A.dom.clear(bannerEl).append(...banners());
     A.dom.clear(railEl).append(rail());
     A.dom.clear(mainEl);
     const view = A.store.ui.view;
@@ -194,8 +217,7 @@
     const msg = A.store.message;
     if (msg.tone === 'alert') { statusEl.textContent = ''; alertEl.textContent = msg.text; }
     else { alertEl.textContent = ''; statusEl.textContent = msg.text; }
-    saveEl.textContent = A.store.banners.storage ? 'Not saved in this browser' : A.store.saved ? T.saved : 'Not changed yet';
-    saveEl.className = ['save-state', A.store.banners.storage && 'is-danger'].filter(Boolean).join(' ');
+    renderStatus();
     if (!viewChanged) window.scrollTo(0, scrollY);
     const pb = document.getElementById('picker-body');
     if (pb && pickerScroll) pb.scrollTop = pickerScroll;
@@ -244,6 +266,7 @@
     root.append(headerEl, bannerEl, railEl, mainEl,
       h('footer', {class: 'statusbar'}, h('div', {class: 'status-messages'}, statusEl, alertEl), saveEl), fileInput);
     S.onRender(render);
+    S.onStatus(renderStatus);
     const hv = viewFromHash();
     if (hv) A.store.ui.view = hv;
     window.addEventListener('hashchange', () => { const v = viewFromHash(); if (v && v !== A.store.ui.view) go(v); });
@@ -254,5 +277,5 @@
     render();
   }
 
-  A.shell = {mount, render, go, exportVil, importFile, resetToDefault, openIssues, exportName};
+  A.shell = {mount, render, renderStatus, go, exportVil, importFile, resetToDefault, openIssues, exportName};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
