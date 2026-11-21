@@ -6,7 +6,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const KS = require('./load-core.js');
 
-// The app modules only need storage and window events at boot; nothing here draws.
+// The app modules only need view-preference storage and window events at boot; nothing here draws.
+// Without a page location the studio boots as if opened from a file: the built-in layout, in memory.
 const memory = new Map();
 globalThis.localStorage = {
   getItem: (k) => (memory.has(k) ? memory.get(k) : null),
@@ -22,10 +23,7 @@ function boot(savedUi) {
   memory.clear();
   A.store.ui = A.state.defaultUi();
   A.store.baselineHash = null;
-  if (savedUi) {
-    memory.set(A.state.STORAGE_KEY, JSON.stringify(KS.workspace.fromDefault()));
-    memory.set(A.state.UI_KEY, JSON.stringify({ view: 'keymap', layer: 0, level: 0, index: {}, ...savedUi }));
-  }
+  if (savedUi) memory.set(A.state.UI_KEY, JSON.stringify({ view: 'keymap', layer: 0, level: 0, index: {}, ...savedUi }));
   A.state.boot();
 }
 

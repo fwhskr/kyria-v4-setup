@@ -122,7 +122,7 @@
   function resetSection() {
     return h('section', {class: 'panel settings-section', 'aria-labelledby': 'reset-title'},
       h('h2', {id: 'reset-title', class: 'section-title', text: 'Start over'}),
-      h('p', {class: 'hint', text: 'Replaces the keymap in this browser with the built-in layout (kriskyria.vil). Export first if you want to keep your edits.'}),
+      h('p', {class: 'hint', text: `Replaces ${A.text.keymapHere(A.store.project.path)} with the built-in layout (kriskyria.vil). Export first if you want to keep your edits.`}),
       h('button', {type: 'button', class: 'button button-danger-quiet', 'data-fid': 'reset', text: 'Reset to built-in layout\u2026', on: {click: A.shell.resetToDefault}}));
   }
 

@@ -7,6 +7,7 @@
     ['json', 'src/core/json.js'], ['keycodes', 'src/core/keycodes.js'], ['vil', 'src/core/vil.js'], ['legend', 'src/core/legend.js'],
     ['workspace', 'src/core/workspace.js'], ['history', 'src/core/history.js']
   ];
+  const APP_FILES = [['project', 'src/app/project.js'], ['state', 'src/app/store.js'], ['shell', 'src/app/shell.js']];
 
   function fail(lines) {
     const app = document.getElementById('app');
@@ -23,17 +24,20 @@
     app.append(box);
   }
 
-  function start() {
-    const missing = REQUIRED.filter(([name]) => KS[name] === undefined).map(([, file]) => file);
+  async function start() {
+    const missing = REQUIRED.filter(([name]) => KS[name] === undefined).map(([, file]) => file)
+      .concat(APP_FILES.filter(([name]) => !A || A[name] === undefined).map(([, file]) => file));
     if (missing.length) {
       fail(['These files are missing or failed to load: ' + missing.join(', ') + '.',
-        'Open index.html from the complete keymap-studio folder; every file must stay next to it.']);
+        'Open the studio from the complete keymap-studio folder; every file must stay next to index.html.']);
       return;
     }
-    try { A.state.boot(); }
+    const note = document.getElementById('boot-message');
+    if (note && /^https?:$/.test(location.protocol)) note.textContent = 'Loading layouts/kyria.vil\u2026';
+    try { await A.state.boot(); }
     catch (e) {
       console.error(e);
-      fail(['The built-in layout couldn\u2019t be loaded' + (e && e.message ? ': ' + e.message : '') + '.', 'Nothing in this browser was changed.']);
+      fail(['The keymap couldn\u2019t be loaded' + (e && e.message ? ': ' + e.message : '') + '.', 'Nothing was changed.']);
       return;
     }
     window.addEventListener('error', e => {
@@ -48,6 +52,7 @@
     A.shell.mount();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
+  const run = () => { start().catch(e => { console.error(e); fail(['Kyria Keymap Studio stopped while starting' + (e && e.message ? ': ' + e.message : '') + '.']); }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});

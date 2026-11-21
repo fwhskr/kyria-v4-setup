@@ -1,7 +1,6 @@
 (function (KS) {
   'use strict';
   const A = KS.app = KS.app || {};
-  const STORAGE_KEY = 'kyria-keymap-studio/v2';
   const UI_KEY = 'kyria-keymap-studio/v2/ui';
   const VIEWS = ['keymap', 'macros', 'tapdance', 'combos', 'overrides', 'altrepeat', 'settings', 'sheet'];
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -14,9 +13,9 @@
     loadIssues: [],
     baselineHash: null,
     baselineKind: 'built-in',
-    banners: {storage: null, otherTab: false, restore: null},
-    message: {text: '', tone: 'status'},
-    saved: false
+    // project.mode: 'server' (saved to project.path) or 'memory' (file:// or the server failed).
+    project: {mode: 'memory', path: null, state: 'idle', error: null, reason: null},
+    message: {text: '', tone: 'status'}
   };
 
   function defaultUi() {
@@ -53,27 +52,37 @@
   function setMessage(text, tone) { store.message = {text, tone: tone || 'status', at: Date.now()}; }
 
   /* ---------- persistence ---------- */
+  // The keymap is written to the project folder by the studio server (A.project); only view
+  // preferences stay in localStorage.
   function uiSnapshot() {
     const u = store.ui;
     return {view: u.view, layer: u.layer, level: u.level, index: u.index, sheet: {scale: u.sheet.scale, actual: u.sheet.actual},
       baselineHash: store.baselineHash, baselineKind: store.baselineKind};
   }
+  let saver = null;
   function persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ws()));
-      localStorage.setItem(UI_KEY, JSON.stringify(uiSnapshot()));
-      store.banners.storage = null;
-      store.saved = true;
-    } catch (e) {
-      store.saved = false;
-      store.banners.storage = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) ? 'full' : 'blocked';
-    }
+    persistUi();
+    if (store.project.mode !== 'server' || !saver) return;
+    let body;
+    try { body = A.project.payload(ws()); }
+    catch (e) { console.error(e); setProject({state: 'error', error: `the keymap couldn\u2019t be prepared for saving (${e.message})`}); return; }
+    saver.schedule(body);
   }
   function persistUi() {
-    try { localStorage.setItem(UI_KEY, JSON.stringify(uiSnapshot())); } catch (_) { /* reported by persist() */ }
+    try { localStorage.setItem(UI_KEY, JSON.stringify(uiSnapshot())); } catch (_) { /* view preferences are optional */ }
+  }
+  function retrySave() { if (saver) saver.retry(); }
+  // Sends a waiting save now; keepalive lets the request outlive the page (pagehide).
+  function flushSave(opts) { return saver ? saver.flush(opts) : Promise.resolve(null); }
+
+  let statusRenderer = null;
+  function onStatus(fn) { statusRenderer = fn; }
+  function setProject(patch) {
+    Object.assign(store.project, patch);
+    if (statusRenderer) statusRenderer(); else render();
   }
 
-  function restoreUi(layers) {
+  function restoreUi(layers, keepBaseline) {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(UI_KEY) || 'null'); } catch (_) { saved = null; }
     if (!saved || typeof saved !== 'object') return;
@@ -86,36 +95,54 @@
     // always holds every layer, so only the pixel size is restored and the filters are dropped.
     const sh = saved.sheet;
     if (sh && typeof sh === 'object') u.sheet.scale = sh.scale === 2 ? 2 : 1;
+    if (!keepBaseline) return;
     if (typeof saved.baselineHash === 'string') store.baselineHash = saved.baselineHash;
     if (['built-in', 'import', 'export'].includes(saved.baselineKind)) store.baselineKind = saved.baselineKind;
   }
 
-  function boot() {
-    let restored = null, storageBlocked = false;
-    try {
-      const rawText = localStorage.getItem(STORAGE_KEY);
-      if (rawText !== null) {
-        const r = KS.workspace.restore(rawText);
-        if (r.ok) restored = r;
-        else store.banners.restore = (r.issues && r.issues[0] && r.issues[0].message) || 'unreadable data';
-      }
-    } catch (_) { storageBlocked = true; }
-    const start = restored ? restored.ws : KS.workspace.fromDefault();
+  function startBuiltIn(reason, detail) {
+    const start = KS.workspace.fromDefault();
     store.hist = KS.history.create(start);
-    if (restored) {
-      store.loadIssues = restored.issues || [];
-      restoreUi(start.doc.fields.layout.length);
-      if (!store.baselineHash) { store.baselineHash = hash(KS.DEFAULT_VIL_TEXT); store.baselineKind = 'built-in'; }
-      store.saved = true;
-    } else {
-      const d = guard(() => KS.vil.decode(KS.DEFAULT_VIL_TEXT, KS.board), {issues: []});
-      store.loadIssues = d.issues || [];
+    const d = guard(() => KS.vil.decode(KS.DEFAULT_VIL_TEXT, KS.board), {issues: []});
+    store.loadIssues = d.issues || [];
+    store.baselineHash = hash(KS.DEFAULT_VIL_TEXT);
+    store.baselineKind = 'built-in';
+    store.project = {mode: 'memory', path: null, state: 'idle', error: detail || null, reason};
+    restoreUi(start.doc.fields.layout.length, false);
+  }
+
+  /*
+   * Served by the studio server: the keymap comes from GET /api/layout and every change is PUT
+   * back. Opened as a file (or when the GET fails) the built-in layout is edited in memory only.
+   * The file:// path finishes synchronously; the returned promise settles once the keymap is in.
+   */
+  function boot(env) {
+    const e = env || {};
+    const loc = e.location !== undefined ? e.location : globalThis.location;
+    const fetchFn = e.fetch !== undefined ? e.fetch : (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null);
+    const served = !!loc && /^https?:$/.test(loc.protocol || '') && typeof fetchFn === 'function';
+    store.labels = {past: [], future: []};
+    saver = null;
+    if (!served) { startBuiltIn('file'); return Promise.resolve(store.project); }
+    return A.project.load({fetch: fetchFn}).then(loaded => {
+      store.hist = KS.history.create(loaded.ws);
+      store.loadIssues = loaded.issues;
       store.baselineHash = hash(KS.DEFAULT_VIL_TEXT);
       store.baselineKind = 'built-in';
-    }
-    if (storageBlocked) store.banners.storage = 'blocked';
-    window.addEventListener('storage', e => {
-      if (e.key === STORAGE_KEY) { store.banners.otherTab = true; render(); }
+      restoreUi(loaded.ws.doc.fields.layout.length, true);
+      store.project = {mode: 'server', path: loaded.path, state: 'idle', error: null, reason: null};
+      saver = A.project.createSaver({fetch: fetchFn, onState: s => {
+        if (s.state === 'saved') setProject({state: 'saved', path: s.path, error: null});
+        else if (s.state === 'error') setProject({state: 'error', error: s.error});
+        else setProject({state: 'saving'});
+      }});
+      const win = e.window !== undefined ? e.window : globalThis.window;
+      if (win && win.addEventListener) win.addEventListener('pagehide', () => { flushSave({keepalive: true}); });
+      return store.project;
+    }, err => {
+      if (!(err && err.code)) console.error(err);
+      startBuiltIn('load', err && err.message ? err.message : 'unknown error');
+      return store.project;
     });
   }
 
@@ -163,7 +190,6 @@
     store.ui.target = null;
     store.ui.layer = 0;
     store.ui.index = {macros: 0, tapdance: 0, combos: 0, overrides: 0, altrepeat: 0};
-    store.banners.restore = null;
     persist();
     setMessage(message, 'status');
     render();
@@ -339,7 +365,7 @@
 
   A.store = store;
   A.state = {
-    STORAGE_KEY, UI_KEY, boot, persist, persistUi, commit, undo, redo, replaceWorkspace, onRender, render, setMessage, report, guard,
+    UI_KEY, boot, persist, persistUi, retrySave, flushSave, onStatus, commit, undo, redo, replaceWorkspace, onRender, render, setMessage, report, guard,
     ws, fields, hash, isRaw, keyName, layerName, layerColor, targetInfo, writeTarget, opFor, legendAt, legendFor, legendEncoder, parse, format,
     macroText, macroActionsFor, checkMacroText, issues, docState, defaultUi
   };

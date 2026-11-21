@@ -208,7 +208,7 @@
       palette.map((c, i) => hh('button', {type: 'button', class: 'swatch', style: {'--swatch': c}, 'aria-label': `Palette colour ${i + 1} (${c})`,
         on: {click: () => { color.value = c; }}})));
     const body = [
-      hh('p', {class: 'dialog-text', text: 'Names and colours appear on the board and in reference images. They stay in this browser and are not written to the .vil file.'}),
+      hh('p', {class: 'dialog-text', text: 'Names and colours appear on the board and in reference images. They are saved in layouts/kyria.studio.json, not in the .vil file.'}),
       hh('label', {class: 'field-label', for: nameId, text: 'Layer name'}), name,
       hh('label', {class: 'field-label', for: colorId, text: 'Layer colour'}), hh('div', {class: 'color-row'}, color, swatches)
     ];

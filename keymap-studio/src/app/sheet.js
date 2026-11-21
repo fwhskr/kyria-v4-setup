@@ -350,7 +350,7 @@
         [[1, `Normal (1\u00d7)${size(1)}`], [2, `Sharp (2\u00d7)${size(2)}, for high-resolution screens`]].map(([v, text]) => h('label', {class: 'toggle'},
           h('input', {type: 'radio', name: scaleName, checked: ui.sheet.scale === v, 'data-fid': `scale:${v}`, on: {change: () => setScale(v)}}), h('span', {text})))),
       h('button', {type: 'submit', class: 'button button-primary', 'data-fid': 'save-png', disabled: !!A.store.sheetBusy, text: A.store.sheetBusy ? 'Saving\u2026' : 'Save PNG'}),
-      h('p', {class: 'hint', text: `Saves ${fileName()} with ${contents}. Names and colours come from this browser.`}));
+      h('p', {class: 'hint', text: `Saves ${fileName()} with ${contents}. Layer names and colours are the ones set on the Keymap page.`}));
     if (out) {
       out.canvas.setAttribute('role', 'img');
       out.canvas.setAttribute('aria-label', `Preview of the reference image for ${layers.map(l => S.layerName(l)).join(', ')}, ${out.width} by ${out.height} pixels at 1\u00d7.`);
