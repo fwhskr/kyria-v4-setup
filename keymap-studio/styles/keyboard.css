@@ -1,0 +1,76 @@
+/* Write to keyboard dialog (src/app/keyboard.js). Tokens from tokens.css; builds on .dialog in studio.css. */
+@layer components {
+  .kb-dialog { width: min(640px, calc(100vw - 32px)); }
+  .kb-body { display: flex; flex-direction: column; gap: var(--space-2); }
+  .kb-body > .dialog-text, .kb-body > .hint, .kb-body > .notice { margin: 0; }
+
+  .kb-count { font-size: 21px; font-weight: 700; line-height: 1.2; }
+  .kb-lead { font-size: 18px; font-weight: 600; line-height: 1.3; }
+  .kb-ok { color: var(--status-success); }
+  .kb-bad { color: var(--status-danger); }
+  .kb-path { overflow-wrap: anywhere; }
+
+  /* The change list scrolls on its own so the actions stay in view. */
+  .kb-groups {
+    max-height: min(48vh, 440px); overflow: auto; margin-top: var(--space-2);
+    background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--radius-control);
+    padding: 0 var(--space-3) var(--space-2);
+  }
+  .kb-group + .kb-group { margin-top: var(--space-2); }
+  .kb-group-title {
+    position: sticky; top: 0; display: flex; justify-content: space-between; gap: var(--space-3);
+    padding: var(--space-2) 0 var(--space-1); background: var(--surface-sunken); font-size: 15px; font-weight: 700;
+  }
+  .kb-group-count { color: var(--text-muted); font-weight: 600; }
+  .kb-layer + .kb-layer { margin-top: var(--space-1); }
+  .kb-layer-title { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-1) 0 2px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .kb-list { list-style: none; }
+  .kb-item {
+    display: grid; grid-template-columns: minmax(9em, 1fr) minmax(0, 1.5fr); gap: 2px var(--space-3);
+    padding: 5px 0; font-size: 14px; line-height: 1.35;
+  }
+  .kb-place { min-width: 0; overflow-wrap: anywhere; }
+  .kb-change { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-2); min-width: 0; overflow-wrap: anywhere; }
+  .kb-from { color: var(--text-muted); }
+  .kb-arrow { color: var(--accent); }
+  .kb-to { font-weight: 600; }
+
+  .kb-unsupported-list { margin-top: var(--space-1); padding-inline-start: 1.2em; }
+  .kb-unsupported-list li { overflow-wrap: anywhere; }
+  .kb-notice-title { font-weight: 600; }
+
+  /* Unlock: the two keys to hold, drawn as keycaps with the studio's hold band. */
+  .kb-unlock {
+    display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-5) var(--space-4);
+    background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--radius-control);
+  }
+  .kb-caps { display: flex; align-items: center; gap: var(--space-3); }
+  .kb-cap {
+    display: grid; place-items: center; width: 60px; height: 60px; padding-bottom: 8px;
+    font-family: var(--font-legend); font-size: 26px; font-weight: 700; color: var(--text);
+    background: var(--keycap); border: 2px solid var(--line-control); border-radius: 7px;
+    box-shadow: inset 0 -10px 0 var(--keycap-band);
+  }
+  .kb-unlock.is-held .kb-cap { border-color: var(--accent); }
+  .kb-plus { font-size: 20px; font-weight: 700; color: var(--text-muted); }
+  .kb-unlock-title { font-size: 18px; font-weight: 700; text-align: center; }
+  .kb-progress {
+    width: 100%; height: 14px; appearance: none; -webkit-appearance: none;
+    border: 1px solid var(--line-control); border-radius: 7px; background: var(--surface-raised); overflow: hidden;
+  }
+  .kb-progress::-webkit-progress-bar { background: var(--surface-raised); }
+  .kb-progress::-webkit-progress-value { background: var(--accent); }
+  .kb-progress::-moz-progress-bar { background: var(--accent); }
+  .kb-progress-text { text-align: center; }
+
+  @media (max-width: 520px) {
+    .kb-dialog { padding: var(--space-4); }
+    .kb-item { grid-template-columns: minmax(0, 1fr); }
+    .kb-dialog .dialog-actions .button { flex: 1 1 auto; min-height: 44px; }
+  }
+}
+
+@media (forced-colors: active) {
+  .kb-cap { border-color: CanvasText; box-shadow: none; }
+  .kb-unlock.is-held .kb-cap { border-color: Highlight; }
+}

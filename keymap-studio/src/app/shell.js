@@ -143,6 +143,9 @@
         h('button', {type: 'button', class: 'button', 'data-fid': 'open', text: 'Open .vil\u2026', title: 'Open a Vial file (Ctrl+O)', on: {click: () => fileInput.click()}}),
         h('button', {type: 'button', class: 'button', 'data-fid': 'save-image', text: 'Save image', title: 'Save a PNG of all layers (pixel size is set under Reference image)',
           on: {click: () => A.sheet.save()}}),
+        A.keyboard && A.keyboard.served(location) ? h('button', {type: 'button', class: 'button', 'data-fid': 'write-keyboard', text: 'Write to keyboard',
+          title: A.keyboard.available() ? 'Write this keymap to the connected Kyria half' : 'Writing isn\u2019t available: src/core/wire.js didn\u2019t load',
+          'aria-haspopup': 'dialog', on: {click: () => A.keyboard.open()}}) : null,
         h('button', {type: 'button', class: 'button button-primary', 'data-fid': 'export', text: 'Export .vil', title: 'Download the edited Vial file (Ctrl+S)', on: {click: exportVil}})));
   }
 
