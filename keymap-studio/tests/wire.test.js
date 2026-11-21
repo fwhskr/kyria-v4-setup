@@ -41,7 +41,7 @@ test('shifted symbol and composed modifier share a wire value', () => {
 
 test('catalog and composed names survive numeric round trip', () => {
   const composed = ['LSFT(KC_1)', 'RALT(KC_Z)', 'RSFT_T(KC_N)', 'MT(MOD_RCTL, KC_A)',
-    'LT0(KC_A)', 'LT15(KC_Z)', 'LM(3, MOD_RALT)', 'OSM(MOD_LCTL)', 'TD(255)', 'M255'];
+    'LT0(KC_A)', 'LT15(KC_Z)', 'LM(3, MOD_RALT)', 'OSM(MOD_LCTL)', 'OSM(23)', 'MT(23, KC_A)', 'LM(3, 23)', 'TD(255)', 'M255'];
   for (const fn of ['TO', 'MO', 'DF', 'TG', 'OSL', 'TT', 'PDF']) for (const n of [0, 3, 31]) composed.push(`${fn}(${n})`);
   for (const name of [...KS.keycodes.catalog.map(e => e.id), ...composed]) {
     const n = KS.wire.encode(name);
@@ -90,7 +90,9 @@ test('live backup keys match the independent renderer', () => {
 });
 
 test('build fixture preserves unmapped cells and serializes keyboard sections', () => {
-  const current = liveState(), doc = fixture(), target = KS.wire.build(doc, current);
+  const current = liveState(), doc = fixture();
+  doc.fields.layout[0][0][1] = 'KC_C';
+  const target = KS.wire.build(doc, current);
   assert.deepEqual(target.unsupported, []);
   assert.equal(target.keymap.slice(0, 4), current.keymap.slice(0, 4));
   assert.ok(target.macros.startsWith('7e6e00'));
@@ -100,14 +102,30 @@ test('build fixture preserves unmapped cells and serializes keyboard sections', 
   assert.equal(target.layoutOptions, '00000000');
   assert.equal(target.settings['7'], 'c800');
   const changes = KS.wire.diff(current, target);
-  assert.ok(changes.some(x => x.kind === 'key' && x.to === 'KC_B'));
+  assert.ok(changes.some(x => x.kind === 'key' && x.to === 'KC_C'));
   assert.ok(changes.some(x => x.kind === 'macro'));
+  assert.ok(changes.some(x => x.kind === 'macro' && x.to === '"~n"'));
   assert.ok(changes.some(x => x.kind === 'combo' && x.to.includes('MO(1)')));
+});
+
+test('excess dynamic entries are accepted only when empty', () => {
+  const current = liveState(), doc = fixture();
+  doc.fields.combo.push(['KC_NO', 'KC_NO', 'KC_NO', 'KC_NO', 'KC_NO']);
+  assert.deepEqual(KS.wire.build(doc, current).unsupported, []);
+  doc.fields.combo[32][0] = 'KC_A';
+  assert.ok(KS.wire.build(doc, current).unsupported.some(x => x.path === 'combo[32]'));
+});
+
+test('numeric equality suppresses alias-only key changes', () => {
+  const current = liveState(), doc = fixture();
+  doc.fields.layout[0][0][1] = 'KC_B';
+  const target = KS.wire.build(doc, current);
+  assert.ok(!KS.wire.diff(current, target).some(x => x.kind === 'key' && x.layer === 0 && x.row === 0 && x.col === 1));
 });
 
 test('macro actions use Vial escaping, delay and little-endian keycodes', () => {
   const current = liveState(), doc = fixture();
-  doc.fields.macro = [[['tap', 'KC_A', 'MO(0)'], ['down', 'MO(1)'], ['up', 'KC_A'], ['delay', 255]]];
+  doc.fields.macro = [[['tap', 'KC_A', 'TO(0)'], ['down', 'MO(1)'], ['up', 'KC_A'], ['delay', 255]]];
   const target = KS.wire.build(doc, current);
   assert.deepEqual(target.unsupported, []);
   assert.ok(target.macros.startsWith('010104010552ff010621520103040104010200'));

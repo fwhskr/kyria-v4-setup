@@ -309,7 +309,17 @@
     const unknown = () => '0x' + n.toString(16).toUpperCase().padStart(4, '0');
     if (!Number.isInteger(n) || n < 0 || n > 65535) return unknown();
     if (reverse.has(n)) return reverse.get(n);
-    const format = a => { try { return KS.keycodes.format(a); } catch (_) { return unknown(); } };
+    const format = a => {
+      try {
+        const name = KS.keycodes.format(a);
+        if (encode(name) === n) return name;
+        const bits = KS.keycodes.modsBits(a.mods);
+        if (a.k === 'modtap') return `MT(${bits}, ${KS.keycodes.format(a.tap)})`;
+        if (a.k === 'layermod') return `LM(${a.layer}, ${bits})`;
+        if (a.k === 'osm') return `OSM(${bits})`;
+        return unknown();
+      } catch (_) { return unknown(); }
+    };
     const mods = b => KS.keycodes.modsFromBits(b);
     const low = () => KS.keycodes.parse(decode(n & 255));
     if (n >= 0x100 && n < 0x2000) return format({k:'mods', mods:mods(n >> 8), inner:low()});
@@ -460,7 +470,10 @@
       const a = before[i] * 256 + before[i + 1], b = after[i] * 256 + after[i + 1], index = i / 2;
       if (a !== b) changes.push({kind:'key', layer:Math.floor(index / (current.rows * current.cols)), row:Math.floor(index / current.cols) % current.rows, col:index % current.cols, from:decode(a), to:target._names?.[index] || decode(b)});
     }
-    if (target.macros != null && target.macros.toLowerCase() !== current.macros.toLowerCase()) changes.push({kind:'macro', from:current.macros, to:target.macros});
+    if (target.macros != null && target.macros.toLowerCase() !== current.macros.toLowerCase()) {
+      const a = macroDisplay(current.macros), b = macroDisplay(target.macros);
+      for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] || '') !== (b[i] || '')) changes.push({kind:'macro', index:i, from:a[i] || '', to:b[i] || ''});
+    }
     if (target.dynamic != null) target.dynamic.forEach((entries, k) => entries.forEach((entry, index) => {
       const old = current.dynamic[k][index];
       if (entry.toLowerCase() !== old.toLowerCase()) changes.push({kind:sectionNames[k], index, from:dynamicDisplay(k, old), to:dynamicDisplay(k, entry)});
@@ -477,6 +490,25 @@
     return changes;
   }
   function encoderDisplay(s) { const b = unhex(s); return [decode(b[0] * 256 + b[1]), decode(b[2] * 256 + b[3])].join(', '); }
+  function macroDisplay(s) {
+    const bytes = unhex(s), result = [], parts = []; let text = [], i = 0;
+    const flush = () => { if (text.length) { parts.push(JSON.stringify(new TextDecoder().decode(new Uint8Array(text)))); text = []; } };
+    while (i < bytes.length) {
+      const b = bytes[i++];
+      if (b === 0) { flush(); result.push(parts.join(' ')); parts.length = 0; continue; }
+      if (b !== 1 || i >= bytes.length) { text.push(b); continue; }
+      flush();
+      const op = bytes[i++];
+      if (op === 4 && i + 1 < bytes.length) { const ms = (bytes[i] - 1) + 255 * (bytes[i + 1] - 1); i += 2; parts.push(`delay ${ms}ms`); }
+      else if (op >= 1 && op <= 7 && op !== 4 && i < bytes.length) {
+        let n = bytes[i++];
+        if (op >= 5 && i < bytes.length) { const hi = bytes[i++]; n = hi === 255 ? n << 8 : n | hi << 8; }
+        parts.push(['', 'tap', 'down', 'up', '', 'tap', 'down', 'up'][op] + ' ' + decode(n));
+      } else parts.push('invalid macro');
+    }
+    if (parts.length || text.length) { flush(); result.push(parts.join(' ')); }
+    return result;
+  }
   function dynamicDisplay(kind, s) {
     const b = unhex(s), count = kind === 0 ? 4 : kind === 1 ? 5 : 2;
     const keys = Array.from({length:count}, (_, i) => decode(b[2 * i] + b[2 * i + 1] * 256));
