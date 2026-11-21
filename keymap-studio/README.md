@@ -5,8 +5,8 @@ An offline editor for the keymap of a splitkb.com **Kyria rev4** typed into a co
 an Estonian computer (õ, ä, ö, ü, š, ž, €, @ …), lets you pick keys by the character you want, and saves a
 readable picture of your layers to keep on screen while you learn the keyboard.
 
-It edits the project's keymap, `layouts/kyria.vil` (a Vial `.vil` file). It never connects to the keyboard:
-you load the `.vil` in [Vial](https://get.vial.today/) yourself.
+It edits the project's keymap, `layouts/kyria.vil` (a Vial `.vil` file), and **Write to keyboard** puts it on the
+connected keyboard. You can still load the `.vil` in [Vial](https://get.vial.today/) instead.
 
 ## Open it
 
@@ -37,8 +37,9 @@ Opening `keymap-studio/index.html` as a file still shows the studio, but it does
    the hold.
 4. Use the panel on the left of the picker for everything else: modifiers held while tapping, hold actions,
    layer keys, one-shot modifiers, macros, tap dances, or a Vial keycode typed by hand (checked as you type).
-5. To put it on the keyboard, in Vial: **File → Load saved layout** and choose `layouts/kyria.vil`. Vial writes
-   it to the keyboard. **Export .vil** still downloads a copy (`<name>-edited.vil`) if you want one elsewhere.
+5. To put it on the keyboard, click **Write to keyboard** in the header (see below). Loading `layouts/kyria.vil`
+   in Vial (**File → Load saved layout**) still works too. **Export .vil** downloads a copy
+   (`<name>-edited.vil`) if you want one elsewhere.
 
 Every change can be undone (**Ctrl+Z**, redo with **Ctrl+Shift+Z**). Every change is saved into
 `layouts/kyria.vil` as you work, so closing the tab loses nothing. Nothing about the keymap is kept in the
@@ -47,6 +48,24 @@ browser.
 The other sections edit what the opened file contains: **Macros**, **Tap dance**, **Combos**,
 **Key overrides**, **Alt repeat**, the encoders (dials between the board halves), the module buttons below
 the board, and in **Settings** the layout options and QMK settings.
+
+## Write to keyboard
+
+**Write to keyboard** (header, only at http://127.0.0.1:8737/) copies the open keymap onto the keyboard
+plugged in over USB, the same way Vial would, without leaving the studio:
+
+1. Plug the keyboard in normally (not in flash mode). The studio reads it and lists every difference: keys
+   by layer and position, macros, tap dances, combos, key overrides, encoders and settings. If nothing
+   differs it says so.
+2. Click **Write**. Only the differences are written, and each one is read back from the keyboard.
+3. Changing **macros** needs Vial's unlock: hold **B** and **J** until the bar fills. Both halves must be
+   connected by their cable, because B is on the left half and J on the right. Key, combo and other changes
+   don't need it. The keyboard is locked again afterwards.
+
+Before each write the keyboard's current state is saved to `backups/before-write/` (the newest 20 are kept;
+the folder is not committed). Each half stores its own keymap and only the half plugged in over USB is
+written, so press **Write to keyboard** again after plugging in the other half. Nothing here flashes
+firmware or sends a reset.
 
 ## Reference image
 
@@ -76,8 +95,9 @@ sit in two columns; for the built-in eight-layer keymap the image is 2590 × 254
   encoder names and layout options come from the Kyria rev4 Vial definition in this repository.
 - **Estonian layout only.** Legends assume the computer uses the standard Estonian layout (xkb `ee`, with
   dead keys). On any other layout the keys type different characters.
-- **Offline file editor.** Nothing is read from or sent to a keyboard. Everything the studio knows comes
-  from the opened file, so it can't tell which features or how many entries your keyboard really supports.
+- **Keyboard access only on request.** The keyboard is read and written only from the **Write to keyboard**
+  dialog; the editor itself works from the file, so it can't tell which features or how many entries your
+  keyboard supports until you open that dialog.
 - **Vial decides on load.** Vial loads keycodes it doesn't know as `KC_NO` (the studio warns about those),
   drops macros, tap dances, combos and overrides beyond what the keyboard supports, and refuses macros that
   don't fit the keyboard's macro memory (its size is not stored in `.vil` files).

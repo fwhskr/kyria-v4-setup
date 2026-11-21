@@ -34,7 +34,7 @@ Do not edit Backlog task, draft, document, decision, or milestone markdown files
 - Timeboxes: anything runnable in 1 minute or less is the default check. If a check needs more than 10 minutes, it is a CI job, not an agent job.
 
 ## What this project is
-Kyria keyboard setup, firmware and host helpers, plus an offline Estonian browser editor in /home/kris/projects/kyria/keymap-studio. The editor exports Vial maps and readable PNG references; it never connects to hardware.
+Kyria keyboard setup, firmware and host helpers, plus an Estonian browser editor in /home/kris/projects/kyria/keymap-studio served on 127.0.0.1 by tools/studio_server.py (`make studio`). It stores the keymap in layouts/, exports Vial maps and readable PNG references, and writes the keymap to the connected keyboard only from its Write to keyboard dialog (tools/kyria_hid.py, Vial raw HID; tests use a fake device, never real hardware).
 
 ## Terminology
 - Vial export: a .vil file imported later using actual Vial; not a firmware flash.

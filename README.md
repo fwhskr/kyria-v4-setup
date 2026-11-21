@@ -116,9 +116,10 @@ For **Estonian character-first editing and readable typing-reference images**, u
 [Keymap Studio](keymap-studio/README.md). Run `make studio` (or once
 `make install-studio` to start it at every login) and open http://127.0.0.1:8737/.
 Every change is saved straight into `layouts/kyria.vil` in this folder; commit it
-with git. Load that file using Vial when you are ready to apply your changes:
-*File → Load saved layout*. The studio does not
-flash or write to your keyboard. Keep your original `.vil` for rollback.
+with git. To apply it, click **Write to keyboard** in the studio (it shows the
+differences, writes only those, and saves the keyboard's previous state to
+`backups/before-write/`), or load the file in Vial: *File → Load saved layout*.
+The studio never flashes firmware. Keep your original `.vil` for rollback.
 
 Want to copy this setup? The picture is a reference, not an importable file.
 The `.vil` in `backups/` is older and does **not** match the picture. See the

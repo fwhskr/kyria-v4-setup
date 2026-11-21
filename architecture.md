@@ -220,6 +220,7 @@ Recorded in LLA §10 (ADR-S1..ADR-S10) and adopted here:
 - ADR-S9: `node:test`.
 - ADR-S10: character-first primary picker.
 - ADR-S11 (2026-11-21, owner order): keymap and metadata stored in `layouts/` through a local 127.0.0.1 server.
+- ADR-S12 (2026-11-22, owner order): **Write to keyboard.** The studio writes the open keymap to the connected half over Vial raw HID through the same server (`tools/kyria_hid.py`, `GET /api/keyboard`, `POST /api/keyboard/write`, `POST /api/keyboard/unlock`); `KS.wire` (`src/core/wire.js`) encodes Vial protocol-6 numbers and builds the diff. Identity check, diff-only writes with readback, pre-write snapshot in `backups/before-write/`, unlock (B + J) only for macros, never a reset or bootloader command. Supersedes the "device detection or reads" non-goal for this dialog only; Zen/Firefox has no WebHID, so the browser never touches the device itself.
 
 ## 17. Diagrams
 
