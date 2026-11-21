@@ -417,6 +417,11 @@
     if (Object.hasOwn(f, 'macro')) result.macros = attempt('macro', () => {
       const bytes = macroBytes(f.macro);
       if (!Number.isSafeInteger(current.macroSize) || current.macroSize < 0 || bytes.length > current.macroSize) throw Error('Macros exceed keyboard buffer');
+      // Bytes after the file's last macro terminator belong to no macro. Keep the keyboard's own tail so
+      // leftovers there never force a write (and a B + J unlock); QMK ignores the whole buffer when its last
+      // byte is non-zero, so only a tail ending in 0 is kept.
+      const tail = typeof current.macros === 'string' && current.macros.length === current.macroSize * 2 ? current.macros.slice(bytes.length * 2).toLowerCase() : '';
+      if (tail.length && /^[0-9a-f]*$/.test(tail) && tail.endsWith('00')) return hex(bytes) + tail;
       return hex(bytes) + '00'.repeat(current.macroSize - bytes.length);
     });
     if (sectionNames.some(k => Object.hasOwn(f, k))) result.dynamic = attempt('dynamic', () => {

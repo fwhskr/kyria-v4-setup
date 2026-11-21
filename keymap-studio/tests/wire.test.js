@@ -171,6 +171,22 @@ test('macro actions use Vial escaping, delay and little-endian keycodes', () => 
   assert.ok(target.macros.startsWith('010104010552ff010621520103040104010200'));
 });
 
+test('bytes after the last macro are kept, so leftovers never force a macro write', () => {
+  const doc = fixture(), current = liveState();
+  const ours = KS.wire.build(doc, current).macros.slice(0, 6); // "~n" + terminator, then 15 empty macros
+  const used = ours + '00'.repeat(15);
+  const leftover = Buffer.from('}{KC_O}\n', 'ascii').toString('hex') + '00';
+  current.macros = used + leftover + '00'.repeat(current.macroSize - used.length / 2 - leftover.length / 2);
+  const target = KS.wire.build(doc, current);
+  assert.equal(target.macros, current.macros);
+  assert.ok(!KS.wire.diff(current, target).some(x => x.kind === 'macro'));
+  // A tail whose last byte is non-zero is an aborted write: it is cleared, never kept.
+  current.macros = current.macros.slice(0, -2) + '41';
+  const cleared = KS.wire.build(doc, current).macros;
+  assert.ok(cleared.endsWith('00'));
+  assert.equal(cleared.slice(used.length), '00'.repeat(current.macroSize - used.length / 2));
+});
+
 test('oversize macros and unknown setting widths are unsupported', () => {
   const current = liveState(), doc = fixture();
   doc.fields.macro = [[['text', 'x'.repeat(current.macroSize)]]];
