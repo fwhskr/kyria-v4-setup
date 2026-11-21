@@ -81,7 +81,8 @@ test('every fixture key has its independently derived QMK number', () => {
     if (action.k === 'trans') return 1;
     if (action.k === 'basic' || action.k === 'named') {
       const e = KS.keycodes.byId(action.id);
-      for (const name of [e.id, ...e.aliases]) {
+      const vialNames = {KC__VOLUP:'KC_KB_VOLUME_UP', KC__VOLDOWN:'KC_KB_VOLUME_DOWN'};
+      for (const name of [e.id, ...e.aliases, vialNames[e.id]]) {
         const n = value(name);
         if (n !== undefined) return n;
       }
