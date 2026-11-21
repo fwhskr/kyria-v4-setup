@@ -56,8 +56,8 @@ test: $(BUILD)/key_text_test $(BUILD)/display_test
 studio-test:
 	node --test 'keymap-studio/tests/*.test.js'
 
-studio:
-	python3 tools/studio_server.py
+studio: | $(PY)
+	$(PY) tools/studio_server.py
 
 assets: | $(PY)
 	cd tools && $(PY) generate_smooth.py
