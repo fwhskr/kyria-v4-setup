@@ -1,0 +1,11 @@
+# Template: `make install-studio` fills in @ROOT@.
+[Unit]
+Description=Kyria Keymap Studio
+
+[Service]
+ExecStart=/usr/bin/python3 @ROOT@/tools/studio_server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -8,13 +8,14 @@ BUILD   := .build
 TARGET  := kyria_rev4_keypress_display
 UF2     := $(BUILD)/$(TARGET).uf2
 SERVICE := $(HOME)/.config/systemd/user/kyria-display.service
+STUDIO_SERVICE := $(HOME)/.config/systemd/user/kyria-studio.service
 UDEV    := /etc/udev/rules.d/99-vial-kyria.rules
 
 TEST_FLAGS := -std=c11 -Wall -Wextra -Werror -Itests -I$(QMK_DIR)/quantum -I$(KEYMAP) \
 	-Ifirmware/users/halcyon_modules/splitkb -Ifirmware/users/halcyon_modules/splitkb/hlc_tft_display
 
 .PHONY: help setup test studio-test assets preview firmware release flash backup check-keyboard restore \
-	install-helper uninstall-helper udev clangd clean
+	install-helper uninstall-helper studio install-studio uninstall-studio udev clangd clean
 
 help:
 	@echo "make setup            fetch pinned tools and sources into .venv/ and .deps/"
@@ -26,6 +27,9 @@ help:
 	@echo "make check-keyboard   compare the keyboard with backups/ without changing it"
 	@echo "make backup           save the keyboard's keymap and settings into backups/"
 	@echo "make install-helper   run the screen helper now and at every login"
+	@echo "make studio           run Keymap Studio locally"
+	@echo "make install-studio   run Keymap Studio now and at every login"
+	@echo "make uninstall-studio stop and remove the Keymap Studio service"
 	@echo "make udev             once per computer: allow your user to talk to the keyboard"
 	@echo "make assets           regenerate fonts, symbols and language tables"
 	@echo "make preview          render images/preview.png from the real display code"
@@ -51,6 +55,9 @@ test: $(BUILD)/key_text_test $(BUILD)/display_test
 # Keymap Studio: node:test only, no npm. The directory form of --test fails on Node 22.
 studio-test:
 	node --test 'keymap-studio/tests/*.test.js'
+
+studio:
+	python3 tools/studio_server.py
 
 assets: | $(PY)
 	cd tools && $(PY) generate_smooth.py
@@ -102,6 +109,21 @@ install-helper: | $(PY)
 uninstall-helper:
 	-systemctl --user disable --now kyria-display.service
 	rm -f $(SERVICE)
+	systemctl --user daemon-reload
+
+install-studio:
+	-systemctl --user disable kyria-studio.service 2>/dev/null
+	mkdir -p $(dir $(STUDIO_SERVICE))
+	rm -f $(STUDIO_SERVICE)
+	sed 's|@ROOT@|$(ROOT)|g' host/kyria-studio.service > $(STUDIO_SERVICE)
+	systemctl --user daemon-reload
+	systemctl --user enable kyria-studio.service
+	systemctl --user restart kyria-studio.service
+	@systemctl --user --no-pager status kyria-studio.service | head -3
+
+uninstall-studio:
+	-systemctl --user disable --now kyria-studio.service
+	rm -f $(STUDIO_SERVICE)
 	systemctl --user daemon-reload
 
 udev:
