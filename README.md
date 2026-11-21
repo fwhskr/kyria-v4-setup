@@ -68,6 +68,7 @@ data by `make preview`, not mock-ups.
 
 | Path | What |
 | --- | --- |
+| `layouts/` | The Keymap Studio keymap (`kyria.vil`, loadable in Vial) and its layer names, colours and labels (`kyria.studio.json`) |
 | `images/keymap.png` | All 8 layers of the backed-up layout, drawn from `backups/live-keymap.json`; legends assume standard Estonian |
 | `release/kyria_rev4_keypress_display.uf2` | The project's prebuilt firmware for both halves |
 | `backups/` | The keyboard's keymap, macros and Vial settings, plus Vial exports and splitkb's stock firmware ([details](backups/README.md)) |
@@ -112,10 +113,11 @@ is needed. Up to 9 letters show full size, up to 12 in smaller text.
 can contain macro text, so review exports before sharing them publicly.
 
 For **Estonian character-first editing and readable typing-reference images**, use
-[Keymap Studio](keymap-studio/README.md). Download this repository, then open
-`keymap-studio/index.html` in your browser — no installation, server or keyboard
-connection is needed. Export a `.vil` file and load it using Vial when you are
-ready to apply your changes: *File → Load saved layout*. The studio does not
+[Keymap Studio](keymap-studio/README.md). Run `make studio` (or once
+`make install-studio` to start it at every login) and open http://127.0.0.1:8737/.
+Every change is saved straight into `layouts/kyria.vil` in this folder; commit it
+with git. Load that file using Vial when you are ready to apply your changes:
+*File → Load saved layout*. The studio does not
 flash or write to your keyboard. Keep your original `.vil` for rollback.
 
 Want to copy this setup? The picture is a reference, not an importable file.
@@ -191,7 +193,7 @@ run `make assets test firmware`, and flash.
 | Screen rows stay empty; US characters shown | The helper is not running, or it cannot detect the language | Start it with `make install-helper`. Without Hyprland the language row stays empty by design; the keyboard still works fully |
 | `make flash` says *No RPI-RP2 drive appeared within 2 minutes* | That half never entered its bootloader | Plug USB into the half to update, double-press *its* reset button, and start `make flash` again; flash each half separately |
 | `make restore` cannot unlock | The unlock keys are not held | Hold **B** and **J** together on the keyboard until told to release; release them after the keyboard locks again |
-| Studio says files are missing, or will not finish in the browser | The studio folder is incomplete, or browser storage is blocked or full | Open `index.html` from the complete `keymap-studio` folder and export your `.vil`; see [Keymap Studio](keymap-studio/README.md) |
+| Studio says *Not saved* or a save fails | The page was opened as a file, or the studio server is not running | Run `make studio` and open http://127.0.0.1:8737/; see [Keymap Studio](keymap-studio/README.md) |
 
 ## Licence
 

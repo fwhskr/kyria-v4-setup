@@ -5,22 +5,24 @@ An offline editor for the keymap of a splitkb.com **Kyria rev4** typed into a co
 an Estonian computer (õ, ä, ö, ü, š, ž, €, @ …), lets you pick keys by the character you want, and saves a
 readable picture of your layers to keep on screen while you learn the keyboard.
 
-It edits Vial `.vil` files. It never connects to the keyboard: you load the exported file in
-[Vial](https://get.vial.today/) yourself.
+It edits the project's keymap, `layouts/kyria.vil` (a Vial `.vil` file). It never connects to the keyboard:
+you load the `.vil` in [Vial](https://get.vial.today/) yourself.
 
 ## Open it
 
 1. Download this repository (green **Code** button, then **Download ZIP**) and unpack it, or clone it.
-2. Open `keymap-studio/index.html` in Firefox or a Chromium-based browser (Chrome, Edge, Brave).
-   Double-clicking the file works; no installation, server, build step or internet connection is needed.
+2. From the repository root, run `make studio`, then open http://127.0.0.1:8737/ in Firefox or a Chromium-based browser (Chrome, Edge, Brave). To start it at every login instead, run `make install-studio` once (remove it with `make uninstall-studio`). The server runs only on `127.0.0.1`; no internet connection is needed.
+
+Every change is saved straight into `layouts/kyria.vil` (the keymap, loadable in Vial) and `layouts/kyria.studio.json` (layer names, colours and key labels). Commit those two files with git to keep the change.
 
 Keep the whole `keymap-studio` folder together: `index.html` loads the files next to it.
 
+Opening `keymap-studio/index.html` as a file still shows the studio, but it does not save: a persistent banner says the page was opened as a file and names `make studio` and http://127.0.0.1:8737/.
+
 ## Edit your layout
 
-1. In Vial: **File → Save current layout** to get a `.vil` file of the keyboard as it is now.
-2. In the studio: **Open .vil…** and choose that file. (Until you do, the studio shows a built-in example
-   layout.)
+1. Start the studio with `make studio` and open http://127.0.0.1:8737/. It opens the project's `layouts/kyria.vil` (with `layouts/kyria.studio.json` when present). If you want to start from the keyboard as it is now, save it in Vial first (**File → Save current layout**) and replace `layouts/kyria.vil` with that file.
+2. **Open .vil…** replaces the opened keymap with another `.vil` file when you want to work from a different file.
 3. Select a key on the board, then choose what it should type:
    - search for a character (type `õ`, `@` or `€`) or a key name (`enter`, `volume`), or
    - click a key on the Estonian keyboard below, at the Plain, Shift, AltGr or Shift + AltGr level, or
@@ -32,11 +34,12 @@ Keep the whole `keymap-studio` folder together: `index.html` loads the files nex
    the hold.
 4. Use the panel on the left of the picker for everything else: modifiers held while tapping, hold actions,
    layer keys, one-shot modifiers, macros, tap dances, or a Vial keycode typed by hand (checked as you type).
-5. **Export .vil** downloads the edited file (`<name>-edited.vil`).
-6. In Vial: **File → Load saved layout** and choose the exported file. Vial writes it to the keyboard.
+5. To put it on the keyboard, in Vial: **File → Load saved layout** and choose `layouts/kyria.vil`. Vial writes
+   it to the keyboard. **Export .vil** still downloads a copy (`<name>-edited.vil`) if you want one elsewhere.
 
-Every change can be undone (**Ctrl+Z**, redo with **Ctrl+Shift+Z**). Edits are saved in this browser as you
-work, so closing the tab loses nothing; the exported `.vil` file is the real copy.
+Every change can be undone (**Ctrl+Z**, redo with **Ctrl+Shift+Z**). Every change is saved into
+`layouts/kyria.vil` as you work, so closing the tab loses nothing. Nothing about the keymap is kept in the
+browser.
 
 The other sections edit what the opened file contains: **Macros**, **Tap dance**, **Combos**,
 **Key overrides**, **Alt repeat**, the encoders (dials between the board halves), the module buttons below
@@ -78,8 +81,8 @@ sit in two columns; for the built-in eight-layer keymap the image is 2590 × 254
 - **Text macros are US-ASCII.** Firmware types macro text through US key positions, so text steps accept
   plain ASCII only. Add Estonian characters to a macro with **Character or key**, which stores the exact
   key taps.
-- **Your data stays in the browser.** Layer names, colours and your own key labels are kept in this
-  browser's storage and are not written to the `.vil` file. Clearing browser data removes them.
+- **Layer names, colours and labels** are kept in `layouts/kyria.studio.json`, next to the keymap. They are
+  not written into the `.vil` file, because Vial has no place for them.
 - Everything else in the file, including the exact keyboard UID and fields the studio doesn't edit, is
   exported unchanged. An unedited file saved by Vial exports byte-for-byte identical; a file with other
   JSON spacing is rewritten in Vial's formatting (the studio warns), with the same content.
@@ -87,8 +90,11 @@ sit in two columns; for the built-in eight-layer keymap the image is 2590 × 254
 ## If something goes wrong
 
 - **A message says files are missing:** open `index.html` from the complete `keymap-studio` folder.
-- **"Not saved in this browser":** the browser blocks or has filled local storage. Export your `.vil`
-  to keep your work.
+- **"Not saved: this page was opened as a file":** you opened `index.html` directly. Run `make studio` in the
+  kyria folder and open http://127.0.0.1:8737/.
+- **A save fails or the studio can't reach its server:** the server stopped. Start it again with
+  `make studio` (or `make install-studio`); until then edits stay only in the open tab, so export your `.vil`
+  if you need to keep them.
 - **The keyboard UID was rounded** by another tool: **Settings** offers to restore the exact Kyria UID.
 
 Compatibility baseline: Vial GUI at commit `aef8222a2d0429a183b2ed692d5f9efcfd383f08`, `.vil` files with
