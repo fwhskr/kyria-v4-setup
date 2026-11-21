@@ -1,7 +1,25 @@
 {
   "schema": 1,
   "filename": "kyria.vil",
-  "layerNames": ["Base", "Special", "Number", "Symbol", "Navi", "Media", "Function", "Spare"],
-  "layerColors": ["#70b7ff", "#4dd8cc", "#83d38a", "#ffbd68", "#ba9bff", "#ffe071", "#ff8f9c", "#9daabd"],
+  "layerNames": [
+    "Base",
+    "Special",
+    "Number",
+    "Symbol",
+    "Navi",
+    "Media",
+    "Function",
+    "Spare"
+  ],
+  "layerColors": [
+    "#70b7ff",
+    "#4dd8cc",
+    "#83d38a",
+    "#ffbd68",
+    "#ba9bff",
+    "#ffe071",
+    "#ff8f9c",
+    "#9daabd"
+  ],
   "keyLabels": {}
 }

@@ -98,6 +98,14 @@ class StudioHandler(BaseHTTPRequestHandler):
             self.error(400, "Invalid Content-Length")
             return
         if size > LIMIT:
+            # Read (and drop) a bounded body first so the client sees the 413 instead of a reset.
+            remaining = min(size, 16 * LIMIT)
+            while remaining > 0:
+                chunk = self.rfile.read(min(65536, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+            self.close_connection = True
             self.error(413, "Body too large")
             return
         try:
