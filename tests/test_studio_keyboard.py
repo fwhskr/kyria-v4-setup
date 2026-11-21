@@ -150,6 +150,9 @@ class KeyboardTests(StudioServerTests):
         self.device.uid = kyria_hid.UID
         payload['keymap'] = '7c00' + payload['keymap'][4:]
         self.assertEqual(self.post('write', payload)[0], 400)
+        payload['keymap'] = '0000' + payload['keymap'][4:]
+        payload['macros'] = '01057cff' + '00' * 52
+        self.assertEqual(self.post('write', payload)[0], 400)
         self.assertEqual(self.device.writes, [])
 
     def test_macros_unlock_and_actions(self):

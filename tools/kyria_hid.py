@@ -134,7 +134,7 @@ class Keyboard:
         target = {'keymap': decode(payload['keymap'], len(current['keymap']) // 2)}
         if payload['macros'] is not None:
             target['macros'] = decode(payload['macros'], current['macroSize'])
-            if not current['unlocked'] and b'\x01\x05\x00\x7c' in target['macros']:
+            if not current['unlocked'] and any(bytes((1, op, 0x7c, 0xff)) in target['macros'] for op in (5, 6, 7)):
                 raise KeyboardError('QK_BOOT requires unlock', 400)
             if target['macros'].hex() != current['macros'] and not current['unlocked']:
                 raise KeyboardError('Macro changes require unlock', 409, needUnlock=True)
@@ -210,9 +210,12 @@ class Keyboard:
             for index, data in enumerate(row):
                 if data.hex() != current['encoders'][layer][index]:
                     for direction in range(2):
-                        self.request([0xFE, 4, layer, index, direction] + list(data[direction * 2:direction * 2 + 2]))
-                    if self.request([0xFE, 3, layer, index])[:4] != data:
-                        raise KeyboardError('Encoder readback mismatch')
+                        start = direction * 2
+                        if data[start:start + 2].hex() == current['encoders'][layer][index][start * 2:start * 2 + 4]:
+                            continue
+                        self.request([0xFE, 4, layer, index, direction] + list(data[start:start + 2]))
+                        if self.request([0xFE, 3, layer, index])[start:start + 2] != data[start:start + 2]:
+                            raise KeyboardError('Encoder readback mismatch')
                     written['encoders'] += 1
         if 'layoutOptions' in target and target['layoutOptions'].hex() != current['layoutOptions']:
             self.request([3, 2] + list(target['layoutOptions']))
