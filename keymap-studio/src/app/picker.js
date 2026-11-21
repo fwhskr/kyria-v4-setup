@@ -21,6 +21,48 @@
     {id: 'chars', label: 'Characters'}, {id: 'keys', label: 'Modifiers and other keys'}, {id: 'layers', label: 'Layers'},
     {id: 'macros', label: 'Macros'}, {id: 'tapdances', label: 'Tap dances'}
   ];
+  // Non-character keys beside the Estonian keyboard, placed as on a full-size board (owner: "lacks
+  // functionality to configure ins, del, home, end, scrlk, pgup, pgdown"). w is the width in key units;
+  // w 0 fills the rest of the row. Rows after the function row sit at the bottom, like the keys they stand for.
+  const NAV_CLUSTER = [
+    {id: 'nk-edit', rows: [
+      [{id: 'KC_ESCAPE', text: 'Esc', name: 'Escape'}],
+      [{id: 'KC_TAB', text: 'Tab', name: 'Tab', w: 1.5}, {id: 'KC_BSPACE', text: 'Backspace', name: 'Backspace', w: 0}],
+      [{id: 'KC_CAPSLOCK', text: 'Caps Lock', name: 'Caps Lock', w: 1.75}, {id: 'KC_ENTER', text: 'Enter', name: 'Enter', w: 0}],
+      [{id: 'KC_SPACE', text: 'Space', name: 'Space', w: 0}, {id: 'KC_APPLICATION', text: 'Menu', name: 'Menu (application key)', w: 1.25}]
+    ]},
+    {id: 'nk-nav', rows: [
+      [{id: 'KC_PSCREEN', text: 'PrtSc', name: 'Print Screen'}, {id: 'KC_SCROLLLOCK', text: 'ScrLk', name: 'Scroll Lock'}, {id: 'KC_PAUSE', text: 'Pause', name: 'Pause / Break'}],
+      [{id: 'KC_INSERT', text: 'Ins', name: 'Insert'}, {id: 'KC_HOME', text: 'Home', name: 'Home'}, {id: 'KC_PGUP', text: 'PgUp', name: 'Page Up'}],
+      [{id: 'KC_DELETE', text: 'Del', name: 'Delete'}, {id: 'KC_END', text: 'End', name: 'End'}, {id: 'KC_PGDOWN', text: 'PgDn', name: 'Page Down'}],
+      [{id: 'KC_UP', text: '\u2191', name: 'Up arrow', arrow: true, skip: 1}],
+      [{id: 'KC_LEFT', text: '\u2190', name: 'Left arrow', arrow: true}, {id: 'KC_DOWN', text: '\u2193', name: 'Down arrow', arrow: true},
+        {id: 'KC_RIGHT', text: '\u2192', name: 'Right arrow', arrow: true}]
+    ]}
+  ];
+  // Search-only names people type for these keys. They are not catalog aliases, because catalog
+  // aliases are accepted as Vial keycodes and none of these is one.
+  const SEARCH_WORDS = {
+    KC_SCROLLLOCK: ['scrlk', 'scroll', 'scroll lock', 'scrolllock'],
+    KC_PSCREEN: ['prtsc', 'prtscr', 'prtscn', 'print', 'print screen', 'printscreen'],
+    KC_PAUSE: ['pause', 'break', 'pause break', 'pause/break'],
+    KC_INSERT: ['ins', 'insert'],
+    KC_DELETE: ['del', 'delete'],
+    KC_HOME: ['home'],
+    KC_END: ['end'],
+    KC_PGUP: ['pgup', 'page up', 'pageup'],
+    KC_PGDOWN: ['pgdn', 'pgdown', 'page down', 'pagedown'],
+    KC_BSPACE: ['bksp', 'backspace', 'back space'],
+    KC_ESCAPE: ['esc', 'escape'],
+    KC_CAPSLOCK: ['caps', 'caps lock', 'capslock'],
+    KC_APPLICATION: ['menu', 'app', 'application', 'context menu'],
+    KC_ENTER: ['enter', 'return'],
+    KC_SPACE: ['space', 'spacebar'],
+    KC_LEFT: ['arrow', 'left', 'left arrow', 'arrow left'],
+    KC_RIGHT: ['arrow', 'right', 'right arrow', 'arrow right'],
+    KC_UP: ['arrow', 'up', 'up arrow', 'arrow up'],
+    KC_DOWN: ['arrow', 'down', 'down arrow', 'arrow down']
+  };
   const DEAD_NAMES = {'\u02c7': 'caron', '~': 'tilde', '\u00b4': 'acute accent', '`': 'grave accent', '\u00a8': 'diaeresis', '\u02da': 'ring above',
     '^': 'circumflex', '\u02dd': 'double acute', '\u02d8': 'breve', '\u02d9': 'dot above', '\u00b8': 'cedilla', '\u00af': 'macron', '\u02db': 'ogonek'};
 
@@ -121,13 +163,40 @@
         h('span', {text: lv.label}))));
   }
 
-  function showModifiers() {
-    const ui = A.store.ui;
-    ui.pickerTab = 'keys'; ui.keyCategory = 'modifiers'; ui.search = '';
-    S.render('ptab:keys');
+  function navCluster() {
+    const key = k => h('button', {type: 'button', class: ['pk', 'nk-key', k.arrow && 'is-arrow', k.w === 0 && 'is-fill'],
+      style: k.w ? {'--w': String(k.w)} : undefined, 'aria-label': `${k.name} (${k.id})`, title: `${k.name} (${k.id})`, 'data-fid': `nk:${k.id}`,
+      on: {click: () => assign(k.id, k.name)}},
+    h('span', {class: 'nk-text', 'aria-hidden': 'true', text: k.text}));
+    return h('div', {class: 'nk', role: 'group', 'aria-label': 'Editing and navigation keys'},
+      NAV_CLUSTER.map(g => h('div', {class: ['nk-group', g.id]}, g.rows.map(row => h('div', {class: 'nk-row'},
+        row[0].skip ? h('span', {class: 'nk-skip', 'aria-hidden': 'true'}) : null, row.map(key))))),
+      h('button', {type: 'button', class: 'link nk-more', 'data-fid': 'show-function-keys', text: 'F1\u2013F24, media and mouse keys', on: {click: () => showKeys('function')}}));
   }
 
+  function showKeys(category) {
+    const ui = A.store.ui;
+    ui.pickerTab = 'keys'; ui.keyCategory = category; ui.search = '';
+    S.render('ptab:keys');
+  }
+  const showModifiers = () => showKeys('modifiers');
+
   /* ---------- search ---------- */
+  // Catalog entries matching a name query: exact name first, then prefix, then substring, each in catalog order.
+  function rankKeycodes(query, entries) {
+    const ql = String(query).trim().toLowerCase();
+    if (!ql) return [];
+    const rank = e => {
+      const names = [e.label, e.id, e.id.replace(/^KC_/, '')]
+        .concat((e.aliases || []).flatMap(a => [a, String(a).replace(/^KC_/, '')]), SEARCH_WORDS[e.id] || [])
+        .map(x => String(x).toLowerCase());
+      if (names.some(x => x === ql)) return 0;
+      if (names.some(x => x.startsWith(ql))) return 1;
+      return names.some(x => x.includes(ql)) ? 2 : -1;
+    };
+    return entries.map((e, i) => ({e, r: rank(e), i})).filter(x => x.r >= 0).sort((a, b) => a.r - b.r || a.i - b.i).map(x => x.e);
+  }
+
   function searchResults(q) {
     const out = [];
     const query = q.trim();
@@ -160,15 +229,8 @@
     if (query.length >= 2 || (!single && query.length >= 1)) {
       const ql = query.toLowerCase();
       const entries = S.guard(() => KS.keycodes.catalog, []) || [];
-      const rank = e => {
-        const names = [e.label, e.id, e.id.replace(/^KC_/, '')].concat(e.aliases || []).map(x => String(x).toLowerCase());
-        if (names.some(x => x === ql)) return 0;
-        if (names.some(x => x.startsWith(ql))) return 1;
-        return names.some(x => x.includes(ql)) ? 2 : -1;
-      };
-      const matches = entries.map((e, i) => ({e, r: rank(e), i})).filter(x => x.r >= 0).sort((a, b) => a.r - b.r || a.i - b.i);
       let n = 0;
-      for (const {e} of matches) {
+      for (const e of rankKeycodes(query, entries)) {
         if (n >= 30) break;
         const legend = S.legendFor(e.id);
         out.push(h('button', {type: 'button', class: 'result', 'data-fid': `res:${e.id}`, 'aria-label': `${legend.a11y || e.label} (${e.id})`,
@@ -272,7 +334,8 @@
         h('div', {class: 'pk-toolbar'}, levelSwitch(),
           h('button', {type: 'button', class: 'link pk-modifiers', 'data-fid': 'show-modifiers', text: 'Ctrl, Shift, Alt and other modifiers', on: {click: showModifiers}})),
         charKeyboard(),
-        h('p', {class: 'hint', text: 'Dotted keys are dead keys: they add an accent to the next letter. Shift + AltGr characters and every AltGr character are reachable here and through search.'}));
+        h('p', {class: 'hint', text: 'Dotted keys are dead keys: they add an accent to the next letter. Shift + AltGr characters and every AltGr character are reachable here and through search.'}),
+        navCluster());
       else if (ui.pickerTab === 'keys') container.append(keysTab());
       else if (ui.pickerTab === 'layers') container.append(layersTab());
       else if (ui.pickerTab === 'macros') container.append(macrosTab());
@@ -287,5 +350,5 @@
       tabs, body);
   }
 
-  A.picker = {render, assign, codeFor, hidOf, outputOf, describeChar, keyNameFor, ROWS};
+  A.picker = {render, assign, codeFor, hidOf, outputOf, describeChar, keyNameFor, rankKeycodes, ROWS, NAV_CLUSTER};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});

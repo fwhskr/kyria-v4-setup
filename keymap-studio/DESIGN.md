@@ -252,6 +252,23 @@ Changes apply immediately as one undoable command each (Vial behaviour); there i
 - Tabs: Characters, Modifiers and other keys, Layers, Macros, Tap dances. The original's ISO/JIS tab is dropped; its contents are on the Estonian keyboard and in search.
 - Characters tab: the Estonian character keys (ISO rows) at the level chosen with the segmented control Plain, Shift, AltGr, Shift + AltGr; a level other than Plain assigns the shifted or AltGr character (`LSFT(…)`, `RALT(…)`) and shows the plain character small in the corner. Keys with no output at a level show no legend and are `aria-disabled` with the reason in the tooltip.
 - Finding modifiers (owner correction 2026-10-25: "they were present, but on a different tab. I didn't notice it"): the level switch only chooses characters, so the row it sits in ends with the link **Ctrl, Shift, Alt and other modifiers** (wraps below it when narrow). The link opens **Modifiers and other keys** on its first category, **Modifiers**, which is also the default when no valid category is selected. Reopening the tab preserves a previously selected category; the other categories (keypad, editing and navigation, function keys, media, mouse, lighting, special, custom) follow unchanged. The search placeholder gives `ctrl` as an example. A modifier is assigned as itself (`KC_LCTRL`) whatever the level.
+- Editing and navigation keys (owner correction 2026-11-21: "keymap studio lacks functionality for me to configure ins, del, home, end, scrlk, pgup, pgdown etc keys"; they were only under a category chip on the second tab). Below the Estonian keyboard and its hint, the Characters tab shows them as keycaps placed like a full-size board's:
+
+  ```
+  [Esc]                          [PrtSc][ScrLk][Pause]
+
+                                 [Ins ][Home ][PgUp ]
+  [Tab   ][Backspace      ]      [Del ][End  ][PgDn ]
+  [Caps Lock][Enter       ]            [ ↑  ]
+  [Space         ][Menu ]        [ ←  ][ ↓  ][ →  ]      F1–F24, media and mouse keys
+  ```
+
+  - Same `.pk` keycap, border, radius and legend face as the character keys, at the board's unit (`--nu`: the character unit, clamped to 44–54 px so touch targets stay ≥ 44 px). The keycap is the picker's only motif, so the cluster reads as more of the same keyboard rather than a new widget.
+  - Left block: Esc on the function row; Tab, Caps Lock and Space bottom-aligned so they share rows with Delete, ↑ and the arrows, as on a real board. Backspace, Enter and Space take the rest of their row. Right block: PrtSc ScrLk Pause, a gap, Ins Home PgUp, Del End PgDn, then the inverted-T arrows. A one-unit gap separates the blocks, as between a board's main block and its navigation keys.
+  - Short legends (Esc, Ins, Del, PgUp, PgDn, PrtSc, ScrLk, arrows); `aria-label` and `title` give the full name and keycode ("Page Down (KC_PGDOWN)"). Clicking assigns through the same path as a character key, so a hold action is kept.
+  - Narrow (390 px): the two blocks wrap, each keeping its shape; nothing scrolls sideways.
+  - The F-row is not repeated (no room beside the board); the link **F1–F24, media and mouse keys** opens **Modifiers and other keys** on **Function keys**.
+- Search also knows the names people type for these keys, kept in the picker and never added as catalog aliases (catalog aliases are accepted as Vial keycodes): scrlk, prtsc, prtscr, print, pgup, pgdn, page up, page down, ins, del, bksp, esc, caps, menu, app, pause, break, arrow, left, right, up, down, enter, return. Catalog aliases also match without their `KC_` prefix (`slck`, `pscr`, `bspc`). Exact name, then prefix, then substring; catalog order within each.
 - No slot selected: "Select a key on the board to assign." Picker buttons stay operable and show that message in the status line instead of failing silently.
 
 ## 8. Feature views
