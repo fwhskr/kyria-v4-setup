@@ -120,6 +120,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             for name, data in files.items():
                 with tempfile.NamedTemporaryFile(dir=self.server.layouts, delete=False) as temp:
                     pending.append(temp.name)
+                    os.fchmod(temp.fileno(), 0o644)  # tracked files, not private temp files
                     temp.write(data)
                     temp.flush()
                     os.fsync(temp.fileno())
