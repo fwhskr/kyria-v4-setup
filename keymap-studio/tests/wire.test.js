@@ -50,15 +50,24 @@ test('catalog and composed names survive numeric round trip', () => {
 });
 
 test('direct header constants agree with the catalog', () => {
-  const header = fs.readFileSync(path.resolve(__dirname, '../../keycodes.h'), 'utf8');
-  const constants = new Map([...header.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(0x[\da-f]+)\s*,/gmi)].map(m => [m[1], parseInt(m[2], 16)]));
+  const root = path.resolve(__dirname, '../..');
+  const source = path.join(root, '.deps/vial-qmk/quantum/keycodes.h');
+  const header = fs.readFileSync(fs.existsSync(source) ? source : path.join(root, 'keycodes.h'), 'utf8');
+  const expressions = new Map([...header.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(0x[\da-f]+|[A-Z][A-Z0-9_]*)\s*,/gmi)].map(m => [m[1], m[2]]));
+  const value = (name, visited = new Set()) => {
+    const v = expressions.get(name);
+    if (!v || visited.has(name)) return undefined;
+    if (/^0x/i.test(v)) return parseInt(v, 16);
+    visited.add(name);
+    return value(v, visited);
+  };
   let checked = 0;
-  for (const entry of KS.keycodes.catalog) if (constants.has(entry.id)) {
-    assert.equal(KS.wire.encode(entry.id), constants.get(entry.id), entry.id);
+  for (const entry of KS.keycodes.catalog) if (value(entry.id) !== undefined) {
+    assert.equal(KS.wire.encode(entry.id), value(entry.id), entry.id);
     checked++;
   }
   assert.ok(checked > 50, `only ${checked} header constants matched`);
-  assert.equal(constants.get('QK_KB_0'), KS.wire.encode('USER00'));
+  assert.equal(value('QK_KB_0'), KS.wire.encode('USER00'));
 });
 
 function liveState() {
