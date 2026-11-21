@@ -10,6 +10,7 @@ const FILES = [
   'src/data/keycode-catalog.js',
   'src/core/json.js',
   'src/core/keycodes.js',
+  'src/core/wire.js',
   'src/core/vil.js',
   'src/core/legend.js',
   'src/core/workspace.js',
