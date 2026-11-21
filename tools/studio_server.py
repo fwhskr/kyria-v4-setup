@@ -5,19 +5,26 @@ import mimetypes
 import os
 from pathlib import Path
 import tempfile
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
+try:
+    from . import kyria_hid
+except ImportError:
+    import kyria_hid
 
 REPO = Path(__file__).resolve().parent.parent
 LIMIT = 1024 * 1024
 
 
-class StudioServer(HTTPServer):
+class StudioServer(ThreadingHTTPServer):
     def __init__(self, address, root, layouts):
         super().__init__(address, StudioHandler)
         self.root = Path(root).resolve()
         self.layouts = Path(layouts)
+        self.hid_lock = threading.Lock()
+        self.backups = REPO / "backups" / "before-write"
 
 
 class StudioHandler(BaseHTTPRequestHandler):
@@ -54,6 +61,9 @@ class StudioHandler(BaseHTTPRequestHandler):
         if not self.allowed():
             return
         path = urlsplit(self.path).path
+        if path == "/api/keyboard":
+            self.keyboard("read")
+            return
         if path == "/api/layout":
             try:
                 vil = (self.server.layouts / "kyria.vil").read_bytes().decode("utf-8")
@@ -79,6 +89,61 @@ class StudioHandler(BaseHTTPRequestHandler):
             return
         content_type = {".js": "text/javascript", ".woff2": "font/woff2"}.get(target.suffix.lower())
         self.respond(200, data, content_type or mimetypes.guess_type(target.name)[0] or "application/octet-stream")
+
+    def keyboard(self, action, payload=None):
+        if not self.server.hid_lock.acquire(blocking=False):
+            self.error(409, "busy")
+            return
+        try:
+            with kyria_hid.connect() as device:
+                keyboard = kyria_hid.Keyboard(device)
+                if action == "read":
+                    result = keyboard.read()
+                elif action == "write":
+                    result = keyboard.write(payload, self.server.backups)
+                else:
+                    result = keyboard.unlock(payload.get("action"))
+            self.respond(200, result)
+        except kyria_hid.KeyboardError as exc:
+            if action == "read":
+                self.respond(200, {"connected": False, "error": str(exc)})
+            else:
+                self.respond(exc.status, {"error": str(exc), **exc.extra})
+        except (OSError, ValueError) as exc:
+            if action == "read":
+                self.respond(200, {"connected": False, "error": "Cannot read keyboard"})
+            else:
+                self.error(500, "Keyboard operation failed")
+        finally:
+            self.server.hid_lock.release()
+
+    def do_POST(self):
+        if not self.allowed(check_origin=True):
+            return
+        path = urlsplit(self.path).path
+        if path not in ("/api/keyboard/write", "/api/keyboard/unlock"):
+            self.error(405, "Method not allowed")
+            return
+        if self.headers.get_content_type() != "application/json":
+            self.error(415, "Expected application/json")
+            return
+        lengths = self.headers.get_all("Content-Length", [])
+        if len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit() or self.headers.get("Transfer-Encoding"):
+            self.error(400, "Invalid Content-Length")
+            return
+        size = int(lengths[0])
+        if size > LIMIT:
+            self.close_connection = True
+            self.error(413, "Body too large")
+            return
+        try:
+            payload = json.loads(self.rfile.read(size).decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError
+        except (ValueError, UnicodeError, RecursionError):
+            self.error(400, "Invalid keyboard payload")
+            return
+        self.keyboard("write" if path.endswith("/write") else "unlock", payload)
 
     def do_PUT(self):
         if not self.allowed(check_origin=True):

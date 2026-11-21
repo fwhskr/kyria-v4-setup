@@ -3,7 +3,7 @@
 Description=Kyria Keymap Studio
 
 [Service]
-ExecStart=/usr/bin/python3 @ROOT@/tools/studio_server.py
+ExecStart=@ROOT@/.venv/bin/python @ROOT@/tools/studio_server.py
 Restart=on-failure
 RestartSec=5
 

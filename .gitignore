@@ -15,3 +15,5 @@ __pycache__/
 .env.*
 *.log
 /docs/
+
+/backups/before-write/
