@@ -49,7 +49,7 @@ test('catalog and composed names survive numeric round trip', () => {
   }
 });
 
-test('direct header constants agree with the catalog', () => {
+function headerValue() {
   const root = path.resolve(__dirname, '../..');
   const source = path.join(root, '.deps/vial-qmk/quantum/keycodes.h');
   const header = fs.readFileSync(fs.existsSync(source) ? source : path.join(root, 'keycodes.h'), 'utf8');
@@ -61,13 +61,40 @@ test('direct header constants agree with the catalog', () => {
     visited.add(name);
     return value(v, visited);
   };
-  let checked = 0;
+  return value;
+}
+
+test('direct header constants agree with the catalog', () => {
+  const value = headerValue(); let checked = 0;
   for (const entry of KS.keycodes.catalog) if (value(entry.id) !== undefined) {
     assert.equal(KS.wire.encode(entry.id), value(entry.id), entry.id);
     checked++;
   }
   assert.ok(checked > 50, `only ${checked} header constants matched`);
   assert.equal(value('QK_KB_0'), KS.wire.encode('USER00'));
+});
+
+test('every fixture key has its independently derived QMK number', () => {
+  const value = headerValue(), doc = fixture();
+  function oracle(action) {
+    if (action.k === 'none') return 0;
+    if (action.k === 'trans') return 1;
+    if (action.k === 'basic' || action.k === 'named') {
+      const e = KS.keycodes.byId(action.id);
+      for (const name of [e.id, ...e.aliases]) {
+        const n = value(name);
+        if (n !== undefined) return n;
+      }
+      assert.fail(`No header name for ${action.id}`);
+    }
+    if (action.k === 'mods' || action.k === 'modtap') return (action.k === 'modtap' ? value('QK_MOD_TAP') : 0) | KS.keycodes.modsBits(action.mods) << 8 | oracle(action.inner || action.tap);
+    if (action.k === 'layer') return value({MO:'QK_MOMENTARY', DF:'QK_DEF_LAYER', TO:'QK_TO', TG:'QK_TOGGLE_LAYER', OSL:'QK_ONE_SHOT_LAYER', TT:'QK_LAYER_TAP_TOGGLE', PDF:'QK_PERSISTENT_DEF_LAYER'}[action.fn]) | action.layer;
+    if (action.k === 'macro') return value('QK_MACRO') | action.index;
+    assert.fail(`No oracle for ${action.k}`);
+  }
+  for (const layer of doc.fields.layout) for (const row of layer) for (const code of row) {
+    if (code !== -1) assert.equal(KS.wire.encode(code), oracle(KS.keycodes.parse(code)), code);
+  }
 });
 
 function liveState() {
