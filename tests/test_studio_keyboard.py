@@ -140,6 +140,26 @@ class KeyboardTests(StudioServerTests):
         self.assertEqual(self.post('write', payload)[0], 500)
         self.assertEqual(self.device.layout, bytes(4))
 
+    def test_hidapi_error_mid_write_is_a_json_500(self):
+        class HIDException(Exception):  # hidapi's own error type is not an OSError
+            pass
+        payload = self.payload()
+        payload['keymap'] = '0004' + payload['keymap'][4:]
+        original = self.device.write
+        calls = []
+        def unplugged(data):
+            calls.append(data)
+            if len(calls) > 3:  # identity/read done, then the device disappears
+                raise HIDException('device disconnected')
+            original(data)
+        self.device.write = unplugged
+        status, body = self.post('write', payload)
+        self.assertEqual(status, 500)
+        self.assertIn('HIDException', body['error'])
+        self.assertIn('backups/before-write/', body['error'])
+        self.device.write = original
+        self.assertEqual(self.get()[0], 200)  # server and HID lock still usable
+
     def test_mismatch_and_locked_safety(self):
         payload = self.payload()
         for field, value in [('keymap', '00'), ('dynamic', [[], [], [], []]), ('encoders', [])]:

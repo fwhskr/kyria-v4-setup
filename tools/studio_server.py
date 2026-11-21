@@ -109,11 +109,12 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self.respond(200, {"connected": False, "error": str(exc)})
             else:
                 self.respond(exc.status, {"error": str(exc), **exc.extra})
-        except (OSError, ValueError) as exc:
+        except Exception as exc:  # hidapi raises hid.HIDException (not OSError), e.g. when unplugged mid-write
             if action == "read":
-                self.respond(200, {"connected": False, "error": "Cannot read keyboard"})
+                self.respond(200, {"connected": False, "error": f"Cannot read keyboard ({type(exc).__name__}: {exc})"})
             else:
-                self.error(500, "Keyboard operation failed")
+                self.error(500, f"Keyboard operation failed ({type(exc).__name__}: {exc}); "
+                                "the keyboard may be partly written: the previous state is in backups/before-write/")
         finally:
             self.server.hid_lock.release()
 
