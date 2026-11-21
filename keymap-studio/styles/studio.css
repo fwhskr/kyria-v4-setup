@@ -224,6 +224,24 @@
   .pk-dead { position: absolute; bottom: 2px; left: 0; right: 0; font-size: 12px; color: var(--level-shift); line-height: 1; }
   .pk.is-dead { border-style: dotted; border-width: 2px; border-color: var(--level-shift); }
   .pk.is-empty { background: var(--surface-app); border-color: var(--keycap-empty-line); cursor: default; }
+  /* Editing and navigation keys: the character board's keycap unit, never below a 44 px touch target. */
+  .nk {
+    --nu: clamp(44px, calc((100cqi - 8px) / 14.6), 54px); --ng: calc(var(--nu) * 0.1);
+    display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-4) var(--nu); margin-top: var(--space-4);
+  }
+  .nk-group { display: flex; flex-direction: column; gap: var(--ng); }
+  .nk-edit { width: calc(var(--nu) * 5 + var(--ng) * 2); }
+  .nk-row { display: flex; gap: var(--ng); }
+  .nk-row:first-child { margin-bottom: calc(var(--nu) * 0.35); }
+  /* Tab, Caps and Space line up with the Delete, arrow-up and arrow rows, as on a full-size board. */
+  .nk-edit .nk-row:nth-child(2) { margin-top: auto; }
+  .nk-skip { width: var(--nu); flex: none; }
+  .nk-key { --u: var(--nu); width: calc(var(--w, 1) * var(--nu) + (var(--w, 1) - 1) * var(--ng)); }
+  .nk-key.is-fill { flex: 1 1 auto; }
+  .nk-key:active { background: var(--surface-selected); }
+  .nk-text { font-family: var(--font-legend); font-size: clamp(12px, calc(var(--nu) * 0.27), 15px); font-weight: 600; line-height: 1; white-space: nowrap; }
+  .nk-key.is-arrow .nk-text { font-size: max(18px, calc(var(--nu) * 0.42)); }
+  .nk-more { align-self: flex-end; min-height: 32px; padding: 4px 0; font-weight: 600; }
   .results { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
   .result {
     display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);

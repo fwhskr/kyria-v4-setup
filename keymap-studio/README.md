@@ -26,7 +26,10 @@ Opening `keymap-studio/index.html` as a file still shows the studio, but it does
 3. Select a key on the board, then choose what it should type:
    - search for a character (type `õ`, `@` or `€`) or a key name (`enter`, `volume`), or
    - click a key on the Estonian keyboard below, at the Plain, Shift, AltGr or Shift + AltGr level, or
-   - for Ctrl, Shift, Alt, AltGr, Super and keys such as Enter, the arrows or F1, open
+   - click Esc, Tab, Backspace, Enter, Insert, Delete, Home, End, Page Up, Page Down, Print Screen,
+     Scroll Lock, Pause or an arrow in the keys below the Estonian keyboard (search finds them too:
+     `ins`, `del`, `pgdn`, `scrlk`, `prtsc`), or
+   - for Ctrl, Shift, Alt, AltGr, Super and keys such as F1 or the keypad, open
      **Modifiers and other keys** (or the **Ctrl, Shift, Alt and other modifiers** link beside the levels).
      The levels only choose which character a key types; they don't assign Shift or AltGr themselves.
 
