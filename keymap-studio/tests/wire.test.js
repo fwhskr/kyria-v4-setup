@@ -49,10 +49,13 @@ test('catalog and composed names survive numeric round trip', () => {
   }
 });
 
+// Pinned Vial QMK source, fetched by ./setup.sh into .deps/ (not tracked).
+const HEADER = path.resolve(__dirname, '../../.deps/vial-qmk/quantum/keycodes.h');
+const NO_HEADER = fs.existsSync(HEADER) ? false : 'needs .deps/vial-qmk from ./setup.sh';
+
 function headerValue() {
   const root = path.resolve(__dirname, '../..');
-  const source = path.join(root, '.deps/vial-qmk/quantum/keycodes.h');
-  const header = fs.readFileSync(fs.existsSync(source) ? source : path.join(root, 'keycodes.h'), 'utf8');
+  const header = fs.readFileSync(HEADER, 'utf8');
   const expressions = new Map([...header.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(0x[\da-f]+|[A-Z][A-Z0-9_]*)\s*,/gmi)].map(m => [m[1], m[2]]));
   const value = (name, visited = new Set()) => {
     const v = expressions.get(name);
@@ -64,7 +67,7 @@ function headerValue() {
   return value;
 }
 
-test('direct header constants agree with the catalog', () => {
+test('direct header constants agree with the catalog', {skip: NO_HEADER}, () => {
   const value = headerValue(); let checked = 0;
   for (const entry of KS.keycodes.catalog) if (value(entry.id) !== undefined) {
     assert.equal(KS.wire.encode(entry.id), value(entry.id), entry.id);
@@ -74,7 +77,7 @@ test('direct header constants agree with the catalog', () => {
   assert.equal(value('QK_KB_0'), KS.wire.encode('USER00'));
 });
 
-test('every fixture key has its independently derived QMK number', () => {
+test('every fixture key has its independently derived QMK number', {skip: NO_HEADER}, () => {
   const value = headerValue(), doc = fixture();
   function oracle(action) {
     if (action.k === 'none') return 0;
