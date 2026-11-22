@@ -519,5 +519,111 @@
     const keys = Array.from({length:count}, (_, i) => decode(b[2 * i] + b[2 * i + 1] * 256));
     return keys.join(', ') + (count * 2 < b.length ? ' (' + hex(b.slice(count * 2)) + ')' : '');
   }
-  KS.wire = {encode, decode, build, diff};
+  function macroActions(bytesHex, count) {
+    const bytes = unhex(bytesHex), result = [];
+    if (!Number.isInteger(count) || count < 0) throw Error('Invalid macro count');
+    let i = 0;
+    for (let index = 0; index < count; index++) {
+      const actions = []; let text = [];
+      const flush = () => {
+        if (text.length) {
+          const value = new TextDecoder('utf-8', {fatal:true}).decode(new Uint8Array(text));
+          actions.push(['text', value]); text = [];
+        }
+      };
+      while (i < bytes.length && bytes[i] !== 0) {
+        const b = bytes[i++];
+        if (b !== 1) { text.push(b); continue; }
+        flush();
+        const op = bytes[i++];
+        if (op === 4) {
+          const lo = bytes[i++], hi = bytes[i++];
+          if (!lo || !hi) throw Error('Invalid macro delay');
+          actions.push(['delay', lo - 1 + 255 * (hi - 1)]);
+        } else if ([1, 2, 3, 5, 6, 7].includes(op)) {
+          const lo = bytes[i++], hi = op >= 5 ? bytes[i++] : null;
+          if (!lo || (op >= 5 && !hi)) throw Error('Invalid macro keycode');
+          const n = hi === null ? lo : hi === 255 ? lo << 8 : lo | hi << 8;
+          const name = decode(n);
+          if (name.startsWith('0x') || encode(name) !== n) throw Error('Unknown macro keycode ' + name);
+          actions.push([[null, 'tap', 'down', 'up', null, 'tap', 'down', 'up'][op], name]);
+        } else throw Error('Invalid macro opcode');
+      }
+      if (i >= bytes.length) throw Error('Unterminated macro');
+      flush(); i++;
+      result.push(actions);
+    }
+    if (hex(macroBytes(result)) !== hex(bytes.slice(0, i))) throw Error('Macro cannot be represented faithfully');
+    return result;
+  }
+  function pending(doc, current) {
+    const target = build(doc, current), items = diff(current, target);
+    const keys = {}, encoders = {}, layers = doc.fields.layout.map(() => 0);
+    for (const item of items) {
+      if (item.kind === 'key') {
+        keys[`${item.layer}:${item.row}:${item.col}`] = {from:item.from, to:item.to};
+        layers[item.layer]++;
+      } else if (item.kind === 'encoder') {
+        const a = unhex(current.encoders[item.layer][item.index]);
+        const b = unhex(target.encoders[item.layer][item.index]);
+        for (let dir = 0; dir < 2; dir++) {
+          const from = a[dir * 2] * 256 + a[dir * 2 + 1], to = b[dir * 2] * 256 + b[dir * 2 + 1];
+          if (from !== to) {
+            encoders[`${item.layer}:${item.index}:${dir}`] = {from:decode(from), to:doc.fields.encoder_layout[item.layer][item.index][dir]};
+            layers[item.layer]++;
+          }
+        }
+      }
+    }
+    return {count:items.length, items, keys, encoders, layers, unsupported:target.unsupported};
+  }
+  function revert(doc, current) {
+    const changes = pending(doc, current), ops = [], skipped = [];
+    let ws = {doc, meta:{}};
+    const add = (path, make) => {
+      try {
+        const op = make();
+        ws = KS.workspace.apply(ws, op);
+        ops.push(op);
+      } catch (error) { skipped.push({path, reason:error.message}); }
+    };
+    const name = n => {
+      const value = decode(n);
+      if (value.startsWith('0x') || encode(value) !== n) throw Error('Unknown keycode ' + value);
+      return value;
+    };
+    for (const item of changes.items) {
+      const {kind, layer, row, col, index, qsid} = item;
+      if (kind === 'key') add(`layout[${layer}][${row}][${col}]`, () => {
+        const b = unhex(current.keymap), i = ((layer * current.rows + row) * current.cols + col) * 2;
+        return {type:'key.set', layer, row, col, code:name(b[i] * 256 + b[i + 1])};
+      });
+      else if (kind === 'encoder') {
+        const b = unhex(current.encoders[layer][index]);
+        for (let dir = 0; dir < 2; dir++) if (changes.encoders[`${layer}:${index}:${dir}`]) {
+          add(`encoder_layout[${layer}][${index}][${dir}]`, () => ({type:'encoder.set', layer, index, dir, code:name(b[dir * 2] * 256 + b[dir * 2 + 1])}));
+        }
+      } else if (kind === 'macro') add(`macro[${index}]`, () => {
+        const bytes = unhex(current.macros), ends = [];
+        bytes.forEach((b, i) => { if (b === 0) ends.push(i); });
+        if (index >= ends.length || index >= doc.fields.macro.length) throw Error('Macro is absent or unterminated');
+        const start = index ? ends[index - 1] + 1 : 0;
+        return {type:'macro.set', index, actions:macroActions(hex(bytes.slice(start, ends[index] + 1)), 1)[0]};
+      });
+      else if (sectionNames.includes(kind)) add(`${kind}[${index}]`, () => {
+        const k = sectionNames.indexOf(kind), b = unhex(current.dynamic[k][index]);
+        const word = i => b[i] + b[i + 1] * 256;
+        const key = i => name(word(i));
+        let value;
+        if (k < 2) value = Array.from({length:5}, (_, i) => k === 0 && i === 4 ? word(i * 2) : key(i * 2));
+        else if (k === 2) value = {trigger:key(0), replacement:key(2), layers:word(4), trigger_mods:b[6], negative_mod_mask:b[7], suppressed_mods:b[8], options:b[9]};
+        else value = {keycode:key(0), alt_keycode:key(2), allowed_mods:b[4], options:b[5]};
+        return {type:['tapDance.set','combo.set','keyOverride.set','altRepeat.set'][k], index, value};
+      });
+      else if (kind === 'setting') add(`settings[${qsid}]`, () => ({type:'setting.set', qsid:Number(qsid), value:unhex(item.from).reduce((n, b, i) => n + b * 2 ** (8 * i), 0)}));
+      else if (kind === 'layout_options') add('layout_options', () => ({type:'layoutOptions.set', value:unhex(current.layoutOptions).reduce((n, b) => n * 256 + b, 0)}));
+    }
+    return {ops, skipped};
+  }
+  KS.wire = {encode, decode, build, diff, pending, revert, macroActions};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
