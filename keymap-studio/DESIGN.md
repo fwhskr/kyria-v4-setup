@@ -251,23 +251,28 @@ Changes apply immediately as one undoable command each (Vial behaviour); there i
 - Search field first: matches characters (reverse lookup through the Estonian table: `@` → "AltGr + 2"), names ("enter", "volume", "layer 2", "print") and raw codes. Results are buttons that assign into the active slot.
 - Tabs: Characters, Modifiers and other keys, Layers, Macros, Tap dances. The original's ISO/JIS tab is dropped; its contents are on the Estonian keyboard and in search.
 - Characters tab: the Estonian character keys (ISO rows) at the level chosen with the segmented control Plain, Shift, AltGr, Shift + AltGr; a level other than Plain assigns the shifted or AltGr character (`LSFT(…)`, `RALT(…)`) and shows the plain character small in the corner. Keys with no output at a level show no legend and are `aria-disabled` with the reason in the tooltip.
-- Finding modifiers (owner correction 2026-10-25: "they were present, but on a different tab. I didn't notice it"): the level switch only chooses characters, so the row it sits in ends with the link **Ctrl, Shift, Alt and other modifiers** (wraps below it when narrow). The link opens **Modifiers and other keys** on its first category, **Modifiers**, which is also the default when no valid category is selected. Reopening the tab preserves a previously selected category; the other categories (keypad, editing and navigation, function keys, media, mouse, lighting, special, custom) follow unchanged. The search placeholder gives `ctrl` as an example. A modifier is assigned as itself (`KC_LCTRL`) whatever the level.
-- Editing and navigation keys (owner correction 2026-11-21: "keymap studio lacks functionality for me to configure ins, del, home, end, scrlk, pgup, pgdown etc keys"; they were only under a category chip on the second tab). Below the Estonian keyboard and its hint, the Characters tab shows them as keycaps placed like a full-size board's:
+- Finding modifiers (owner correction 2026-10-25: "they were present, but on a different tab. I didn't notice it"): the level switch only chooses characters, so the toolbar row it sits in ends with the link **Ctrl, Shift, Alt and other modifiers** (wraps below it when narrow). The keyboard also carries Shift, Ctrl, Super, Alt and AltGr in their places (below). The link opens **Modifiers and other keys** on its first category, **Modifiers**, which is also the default when no valid category is selected. Reopening the tab preserves a previously selected category; the other categories (keypad, editing and navigation, function keys, media, mouse, lighting, special, custom) follow unchanged. The search placeholder gives `ctrl` as an example. A modifier is assigned as itself (`KC_LCTRL`) whatever the level.
+- Editing and navigation keys (owner correction 2026-11-21: "keymap studio lacks functionality for me to configure ins, del, home, end, scrlk, pgup, pgdown etc keys"). Layout correction 2026-11-22 (owner: "plenty of space on the right side but it places a section of keys stacked upwards or downwards… needs to be nice and dynamic"): the Characters tab is one full-size ISO keyboard (tenkeyless), the character keys in the middle and every other key where a real board has it:
 
   ```
-  [Esc]                          [PrtSc][ScrLk][Pause]
+  [Plain|Shift|AltGr|Shift + AltGr]      Ctrl, Shift, Alt and other modifiers   F13–F24, media and mouse keys
+  [Esc]   [F1][F2][F3][F4] [F5][F6][F7][F8] [F9][F10][F11][F12]   [PrtSc][ScrLk][Pause]
 
-                                 [Ins ][Home ][PgUp ]
-  [Tab   ][Backspace      ]      [Del ][End  ][PgDn ]
-  [Caps Lock][Enter       ]            [ ↑  ]
-  [Space         ][Menu ]        [ ←  ][ ↓  ][ →  ]      F1–F24, media and mouse keys
+  [ˇ][1][2][3][4][5][6][7][8][9][0][+][´][Backspace]             [Ins ][Home][PgUp]
+  [Tab ][q][w][e][r][t][y][u][i][o][p][ü][õ][Enter ]             [Del ][End ][PgDn]
+  [Caps ][a][s][d][f][g][h][j][k][l][ö][ä]['][     ]
+  [Shift][<][z][x][c][v][b][n][m][,][.][-][  Shift  ]                  [ ↑ ]
+  [Ctrl][Super][Alt][      Space      ][AltGr][Super][Menu][Ctrl]  [ ← ][ ↓ ][ → ]
+  Dotted keys are dead keys: …
   ```
 
-  - Same `.pk` keycap, border, radius and legend face as the character keys, at the board's unit (`--nu`: the character unit, clamped to 44–54 px so touch targets stay ≥ 44 px). The keycap is the picker's only motif, so the cluster reads as more of the same keyboard rather than a new widget.
-  - Left block: Esc on the function row; Tab, Caps Lock and Space bottom-aligned so they share rows with Delete, ↑ and the arrows, as on a real board. Backspace, Enter and Space take the rest of their row. Right block: PrtSc ScrLk Pause, a gap, Ins Home PgUp, Del End PgDn, then the inverted-T arrows. A one-unit gap separates the blocks, as between a board's main block and its navigation keys.
-  - Short legends (Esc, Ins, Del, PgUp, PgDn, PrtSc, ScrLk, arrows); `aria-label` and `title` give the full name and keycode ("Page Down (KC_PGDOWN)"). Clicking assigns through the same path as a character key, so a hold action is kept.
-  - Narrow (390 px): the two blocks wrap, each keeping its shape; nothing scrolls sideways.
-  - The F-row is not repeated (no room beside the board); the link **F1–F24, media and mouse keys** opens **Modifiers and other keys** on **Function keys**.
+  - One CSS grid of quarter-key columns (`picker.js` `keyboardPlaces`, `studio.css` `.pk-keys`), so 1.25u, 1.75u and 6.25u keys land exactly and rows line up. Enter is the ISO L over the q and a rows: the button is clipped to the L (the notch belongs to the ' key) and its focus ring follows the L.
+  - The key pitch comes from the picker's width (container query units): 44–72 px when wide, 72 px being life size (19 mm), so a 2000 px panel shows a large keyboard; the toolbar, keyboard and hint share one column exactly as wide as the keyboard, centred in the panel. No dead side zone, no orphan link.
+  - Wide (picker ≥ 814 px): main block and navigation cluster side by side, sharing rows, a half-key gap between them. Medium (600–813 px): the main block alone sets the width (pitch up to 54 px); the navigation cluster becomes a two-row strip under its right end (PrtSc ScrLk Pause, Ins/Del block, inverted-T arrows) and the hint fills the space to its left. Narrow (< 600 px, e.g. 390 px phones): the main block splits like the Kyria at 7, y, h and n (Space stays with the left thumb), the right half below the left and flush right, the navigation cluster under it; keys are ≥ 36 px (pitch 38–52 px). Only below a 38 px pitch (≈ 320 px screens) does the keyboard scroll sideways inside its own box; the page never does.
+  - Same `.pk` keycap, border, radius and legend face for every key; the keycap is the picker's only motif. Legends scale with the pitch (characters 44 %, named keys 25 %, 11–16 px).
+  - F1–F12 (`fk:` hooks) and Shift, Ctrl, Super, Alt, AltGr (`mk:`) are real keys that assign themselves, like the editing keys (`nk:`). Short legends (Esc, Ins, Del, PgUp, PgDn, PrtSc, ScrLk, Super, arrows); `aria-label` and `title` give the full name and keycode ("Page Down (KC_PGDOWN)", "AltGr (Right Alt) (KC_RALT)"). Clicking assigns through the same path as a character key, so a hold action is kept.
+  - Tab order is reading order: the main block row by row (function row, number row … bottom row), then the navigation cluster.
+  - The link **F13–F24, media and mouse keys** opens **Modifiers and other keys** on **Function keys**.
 - Search also knows the names people type for these keys, kept in the picker and never added as catalog aliases (catalog aliases are accepted as Vial keycodes): scrlk, prtsc, prtscr, print, pgup, pgdn, page up, page down, ins, del, bksp, esc, caps, menu, app, pause, break, arrow, left, right, up, down, enter, return. Catalog aliases also match without their `KC_` prefix (`slck`, `pscr`, `bspc`). Exact name, then prefix, then substring; catalog order within each.
 - No slot selected: "Select a key on the board to assign." Picker buttons stay operable and show that message in the status line instead of failing silently.
 

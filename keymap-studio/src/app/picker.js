@@ -9,10 +9,10 @@
   const S = A.state;
 
   const ROWS = [
-    {offset: 0, ids: ['KC_GRAVE', 'KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINUS', 'KC_EQUAL']},
-    {offset: 1.5, ids: ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRACKET', 'KC_RBRACKET']},
-    {offset: 1.75, ids: ['KC_A', 'KC_S', 'KC_D', 'KC_F', 'KC_G', 'KC_H', 'KC_J', 'KC_K', 'KC_L', 'KC_SCOLON', 'KC_QUOTE', 'KC_BSLASH']},
-    {offset: 1.25, ids: ['KC_NONUS_BSLASH', 'KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH']}
+    {ids: ['KC_GRAVE', 'KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINUS', 'KC_EQUAL']},
+    {ids: ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRACKET', 'KC_RBRACKET']},
+    {ids: ['KC_A', 'KC_S', 'KC_D', 'KC_F', 'KC_G', 'KC_H', 'KC_J', 'KC_K', 'KC_L', 'KC_SCOLON', 'KC_QUOTE', 'KC_BSLASH']},
+    {ids: ['KC_NONUS_BSLASH', 'KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH']}
   ];
   const CHAR_CATEGORIES = new Set(['letters', 'digits', 'punctuation', 'shifted-symbols']);
   // The level switch only chooses characters, so the modifier keys get a tab named after them,
@@ -21,15 +21,14 @@
     {id: 'chars', label: 'Characters'}, {id: 'keys', label: 'Modifiers and other keys'}, {id: 'layers', label: 'Layers'},
     {id: 'macros', label: 'Macros'}, {id: 'tapdances', label: 'Tap dances'}
   ];
-  // Non-character keys beside the Estonian keyboard, placed as on a full-size board (owner: "lacks
-  // functionality to configure ins, del, home, end, scrlk, pgup, pgdown"). w is the width in key units;
-  // w 0 fills the rest of the row. Rows after the function row sit at the bottom, like the keys they stand for.
+  // Non-character keys (owner: "lacks functionality to configure ins, del, home, end, scrlk, pgup, pgdown").
+  // The editing keys sit in the main block around the characters (MAIN_ROWS); nk-nav is the navigation cluster.
   const NAV_CLUSTER = [
     {id: 'nk-edit', rows: [
       [{id: 'KC_ESCAPE', text: 'Esc', name: 'Escape'}],
-      [{id: 'KC_TAB', text: 'Tab', name: 'Tab', w: 1.5}, {id: 'KC_BSPACE', text: 'Backspace', name: 'Backspace', w: 0}],
-      [{id: 'KC_CAPSLOCK', text: 'Caps Lock', name: 'Caps Lock', w: 1.75}, {id: 'KC_ENTER', text: 'Enter', name: 'Enter', w: 0}],
-      [{id: 'KC_SPACE', text: 'Space', name: 'Space', w: 0}, {id: 'KC_APPLICATION', text: 'Menu', name: 'Menu (application key)', w: 1.25}]
+      [{id: 'KC_TAB', text: 'Tab', name: 'Tab'}, {id: 'KC_BSPACE', text: 'Backspace', name: 'Backspace'}],
+      [{id: 'KC_CAPSLOCK', text: 'Caps Lock', name: 'Caps Lock'}, {id: 'KC_ENTER', text: 'Enter', name: 'Enter'}],
+      [{id: 'KC_SPACE', text: 'Space', name: 'Space'}, {id: 'KC_APPLICATION', text: 'Menu', name: 'Menu (application key)'}]
     ]},
     {id: 'nk-nav', rows: [
       [{id: 'KC_PSCREEN', text: 'PrtSc', name: 'Print Screen'}, {id: 'KC_SCROLLLOCK', text: 'ScrLk', name: 'Scroll Lock'}, {id: 'KC_PAUSE', text: 'Pause', name: 'Pause / Break'}],
@@ -40,6 +39,76 @@
         {id: 'KC_RIGHT', text: '\u2192', name: 'Right arrow', arrow: true}]
     ]}
   ];
+  const MODIFIER_KEYS = {
+    KC_LSHIFT: {text: 'Shift', name: 'Left Shift'}, KC_RSHIFT: {text: 'Shift', name: 'Right Shift'},
+    KC_LCTRL: {text: 'Ctrl', name: 'Left Ctrl'}, KC_RCTRL: {text: 'Ctrl', name: 'Right Ctrl'},
+    KC_LGUI: {text: 'Super', name: 'Left Super'}, KC_RGUI: {text: 'Super', name: 'Right Super'},
+    KC_LALT: {text: 'Alt', name: 'Left Alt'}, KC_RALT: {text: 'AltGr', name: 'AltGr (Right Alt)'}
+  };
+
+  // The picker is a full-size ISO board on a CSS grid of quarter-key columns, so 1.25u and 1.75u keys
+  // land on whole columns. Three arrangements, chosen by container queries in studio.css:
+  //   wide   main block (60 columns) and the navigation cluster beside it, rows shared;
+  //   medium main block, the navigation cluster as a two-row strip under its right end;
+  //   narrow the main block split into halves at 7/y/h/n like the Kyria, right half below the left.
+  const COLS_PER_UNIT = 4;
+  const SPLIT_COL = 26;          // 6.5u: first column of the right half
+  const RIGHT_HALF_ROWS = 8;     // the right half starts 8 grid rows below the left
+  const MAIN_GRID_ROWS = [1, 3, 4, 5, 6, 7];   // grid row 2 is the gap under the function row
+  const C = id => ({kind: 'char', id});
+  const E = (id, w, extra) => Object.assign({kind: 'edit', id, w}, extra);
+  const M = (id, w) => ({kind: 'mod', id, w});
+  const F = n => ({kind: 'fn', id: `KC_F${n}`});
+  const GAP = w => ({gap: true, w});
+  const MAIN_ROWS = [
+    [E('KC_ESCAPE'), GAP(1), F(1), F(2), F(3), F(4), GAP(0.5), F(5), F(6), F(7), F(8), GAP(0.5), F(9), F(10), F(11), F(12)],
+    [...ROWS[0].ids.map(C), E('KC_BSPACE', 2)],
+    // ISO Enter covers the q and a rows; the a row's last character key stops a quarter key short of it.
+    [E('KC_TAB', 1.5), ...ROWS[1].ids.map(C), E('KC_ENTER', 1.5, {h: 2})],
+    [E('KC_CAPSLOCK', 1.75), ...ROWS[2].ids.map(C)],
+    [M('KC_LSHIFT', 1.25), ...ROWS[3].ids.map(C), M('KC_RSHIFT', 2.75)],
+    // When split, Space stays with the left thumb and ends where b does.
+    [M('KC_LCTRL', 1.25), M('KC_LGUI', 1.25), M('KC_LALT', 1.25), E('KC_SPACE', 6.25, {ws: 3.5}),
+      M('KC_RALT', 1.25), M('KC_RGUI', 1.25), E('KC_APPLICATION', 1.25), M('KC_RCTRL', 1.25)]
+  ];
+  // Navigation cluster rows (as in NAV_CLUSTER nk-nav): first column and grid row in each arrangement.
+  const NAV_AT = {
+    wide: [[0, 1], [0, 3], [0, 4], [0, 6], [0, 7]],
+    medium: [[0, 1], [14, 1], [14, 2], [28, 1], [28, 2]],
+    narrow: [[0, 1], [0, 2], [0, 3], [14, 2], [14, 3]]
+  };
+
+  // Grid placement of every picker key: 1-based start column x, span w, grid row r, row span h,
+  // and the medium (xm, rm) and narrow (xs, rs, ws) variants.
+  function keyboardPlaces() {
+    const main = MAIN_ROWS.flatMap((row, ri) => {
+      let col = 0;
+      return row.flatMap(item => {
+        const w = Math.round((item.w || 1) * COLS_PER_UNIT), at = col;
+        col += w;
+        if (item.gap) return [];
+        const r = MAIN_GRID_ROWS[ri], right = at >= SPLIT_COL;
+        return [{kind: item.kind, id: item.id, x: at + 1, w, r, h: item.h || 1, xm: at + 1, rm: r,
+          xs: (right ? at - SPLIT_COL : at) + 1, rs: right ? r + RIGHT_HALF_ROWS : r,
+          ws: item.ws ? Math.round(item.ws * COLS_PER_UNIT) : w}];
+      });
+    });
+    const nav = NAV_CLUSTER[1].rows.flatMap((row, ri) => row.map((k, i) => {
+      const step = ((k.skip || 0) + i) * COLS_PER_UNIT;
+      const [wx, wr] = NAV_AT.wide[ri], [mx, mr] = NAV_AT.medium[ri], [nx, nr] = NAV_AT.narrow[ri];
+      return {kind: 'nav', id: k.id, x: wx + step + 1, w: COLS_PER_UNIT, r: wr, h: 1, xm: mx + step + 1, rm: mr, xs: nx + step + 1, rs: nr, ws: COLS_PER_UNIT};
+    }));
+    return {main, nav};
+  }
+  const PLACES = keyboardPlaces();
+  const NAV_KEYS = new Map(NAV_CLUSTER.flatMap(g => g.rows.flat()).map(k => [k.id, k]));
+
+  function placeStyle(p) {
+    const st = {'--x': String(p.x), '--w': String(p.w), '--r': String(p.r), '--xm': String(p.xm), '--rm': String(p.rm), '--xs': String(p.xs), '--rs': String(p.rs)};
+    if (p.h > 1) st['--h'] = String(p.h);
+    if (p.ws !== p.w) st['--ws'] = String(p.ws);
+    return st;
+  }
   // Search-only names people type for these keys. They are not catalog aliases, because catalog
   // aliases are accepted as Vial keycodes and none of these is one.
   const SEARCH_WORDS = {
@@ -130,26 +199,48 @@
   }
 
   /* ---------- character keyboard ---------- */
-  function charKeyboard() {
-    const ui = A.store.ui, level = ui.level;
-    const rows = ROWS.map(row => h('div', {class: 'pk-row', style: {'--offset': String(row.offset)}},
-      row.ids.map(id => {
-        const hid = hidOf(id), out = outputOf(hid);
-        const ch = out ? out.levels[level] : null, dead = !!(out && out.dead[level]);
-        const plain = out ? out.levels[0] : null;
-        const code = ch ? codeFor(id, level) : null;
-        const label = ch
-          ? `${describeChar(ch, dead)}. ${levelLabel(level)}${level ? ' + ' : ''}${level ? keyNameFor(hid) : 'on the ' + keyNameFor(hid)}`
-          : `${keyNameFor(hid)}: types nothing with ${levelLabel(level)}`;
-        return h('button', {type: 'button', class: ['pk', dead && 'is-dead', !ch && 'is-empty'], 'aria-label': label,
-          'aria-disabled': !ch || !code ? 'true' : undefined, title: code ? `${label} (${code})` : label,
-          'data-fid': `pk:${id}`,
-          on: {click: () => { if (!ch || !code) { S.setMessage(ch ? 'This combination can\u2019t be written as one Vial keycode.' : `${keyNameFor(hid)} types nothing with ${levelLabel(level)}.`, 'status'); S.render(`pk:${id}`); return; } assign(code, dead ? `types dead ${ch}` : `types ${ch}`); }}},
-          level !== 0 && plain ? h('span', {class: 'pk-base', 'aria-hidden': 'true', text: plain}) : null,
-          h('span', {class: 'pk-char', 'aria-hidden': 'true', text: ch || ''}),
-          dead ? h('span', {class: 'pk-dead', 'aria-hidden': 'true', text: 'dead'}) : null);
-      })));
-    return h('div', {class: 'pk-board', role: 'group', 'aria-label': `Estonian keyboard, ${levelLabel(level)} level`}, rows);
+  function charKey(id, level, place) {
+    const hid = hidOf(id), out = outputOf(hid);
+    const ch = out ? out.levels[level] : null, dead = !!(out && out.dead[level]);
+    const plain = out ? out.levels[0] : null;
+    const code = ch ? codeFor(id, level) : null;
+    const label = ch
+      ? `${describeChar(ch, dead)}. ${levelLabel(level)}${level ? ' + ' : ''}${level ? keyNameFor(hid) : 'on the ' + keyNameFor(hid)}`
+      : `${keyNameFor(hid)}: types nothing with ${levelLabel(level)}`;
+    return h('button', {type: 'button', class: ['pk', 'kb-key', dead && 'is-dead', !ch && 'is-empty'], style: placeStyle(place), 'aria-label': label,
+      'aria-disabled': !ch || !code ? 'true' : undefined, title: code ? `${label} (${code})` : label,
+      'data-fid': `pk:${id}`,
+      on: {click: () => { if (!ch || !code) { S.setMessage(ch ? 'This combination can\u2019t be written as one Vial keycode.' : `${keyNameFor(hid)} types nothing with ${levelLabel(level)}.`, 'status'); S.render(`pk:${id}`); return; } assign(code, dead ? `types dead ${ch}` : `types ${ch}`); }}},
+      level !== 0 && plain ? h('span', {class: 'pk-base', 'aria-hidden': 'true', text: plain}) : null,
+      h('span', {class: 'pk-char', 'aria-hidden': 'true', text: ch || ''}),
+      dead ? h('span', {class: 'pk-dead', 'aria-hidden': 'true', text: 'dead'}) : null);
+  }
+
+  // Esc, Tab, arrows and the other non-character keys; prefix is the data-fid family (nk, mk, fk).
+  function namedKey(prefix, id, text, name, place, extraClass) {
+    return h('button', {type: 'button', class: ['pk', 'kb-key', 'nk-key', extraClass], style: placeStyle(place),
+      'aria-label': `${name} (${id})`, title: `${name} (${id})`, 'data-fid': `${prefix}:${id}`,
+      on: {click: () => assign(id, name)}},
+    h('span', {class: 'nk-text', 'aria-hidden': 'true', text}));
+  }
+
+  function mainKey(p, level) {
+    if (p.kind === 'char') return charKey(p.id, level, p);
+    if (p.kind === 'mod') { const m = MODIFIER_KEYS[p.id]; return namedKey('mk', p.id, m.text, m.name, p, 'is-mod'); }
+    if (p.kind === 'fn') { const n = p.id.replace(/^KC_/, ''); return namedKey('fk', p.id, n, n, p, 'is-fn'); }
+    const k = NAV_KEYS.get(p.id);
+    return namedKey('nk', p.id, k.text, k.name, p, p.id === 'KC_ENTER' ? 'is-iso-enter' : null);
+  }
+
+  function keyboard() {
+    const level = A.store.ui.level;
+    return h('div', {class: 'pk-scroll'},
+      h('div', {class: 'pk-keys'},
+        h('div', {class: 'pk-main', role: 'group', 'aria-label': `Estonian keyboard, ${levelLabel(level)} level`},
+          PLACES.main.map(p => mainKey(p, level))),
+        h('div', {class: 'pk-nav', role: 'group', 'aria-label': 'Navigation keys'},
+          PLACES.nav.map(p => { const k = NAV_KEYS.get(p.id); return namedKey('nk', p.id, k.text, k.name, p, k.arrow ? 'is-arrow' : null); })),
+        h('p', {class: 'hint pk-hint', text: 'Dotted keys are dead keys: they add an accent to the next letter. Shift + AltGr characters and every AltGr character are reachable here and through search.'})));
   }
 
   function levelSwitch() {
@@ -163,15 +254,11 @@
         h('span', {text: lv.label}))));
   }
 
-  function navCluster() {
-    const key = k => h('button', {type: 'button', class: ['pk', 'nk-key', k.arrow && 'is-arrow', k.w === 0 && 'is-fill'],
-      style: k.w ? {'--w': String(k.w)} : undefined, 'aria-label': `${k.name} (${k.id})`, title: `${k.name} (${k.id})`, 'data-fid': `nk:${k.id}`,
-      on: {click: () => assign(k.id, k.name)}},
-    h('span', {class: 'nk-text', 'aria-hidden': 'true', text: k.text}));
-    return h('div', {class: 'nk', role: 'group', 'aria-label': 'Editing and navigation keys'},
-      NAV_CLUSTER.map(g => h('div', {class: ['nk-group', g.id]}, g.rows.map(row => h('div', {class: 'nk-row'},
-        row[0].skip ? h('span', {class: 'nk-skip', 'aria-hidden': 'true'}) : null, row.map(key))))),
-      h('button', {type: 'button', class: 'link nk-more', 'data-fid': 'show-function-keys', text: 'F1\u2013F24, media and mouse keys', on: {click: () => showKeys('function')}}));
+  function toolbar() {
+    return h('div', {class: 'pk-toolbar'}, levelSwitch(),
+      h('div', {class: 'pk-links'},
+        h('button', {type: 'button', class: 'link pk-link', 'data-fid': 'show-modifiers', text: 'Ctrl, Shift, Alt and other modifiers', on: {click: showModifiers}}),
+        h('button', {type: 'button', class: 'link pk-link', 'data-fid': 'show-function-keys', text: 'F13\u2013F24, media and mouse keys', on: {click: () => showKeys('function')}})));
   }
 
   function showKeys(category) {
@@ -330,12 +417,7 @@
       A.dom.clear(container);
       if (ui.search.trim()) { container.setAttribute('aria-label', 'Search results'); container.append(h('div', {class: 'results'}, searchResults(ui.search))); return; }
       container.removeAttribute('aria-label');
-      if (ui.pickerTab === 'chars') container.append(
-        h('div', {class: 'pk-toolbar'}, levelSwitch(),
-          h('button', {type: 'button', class: 'link pk-modifiers', 'data-fid': 'show-modifiers', text: 'Ctrl, Shift, Alt and other modifiers', on: {click: showModifiers}})),
-        charKeyboard(),
-        h('p', {class: 'hint', text: 'Dotted keys are dead keys: they add an accent to the next letter. Shift + AltGr characters and every AltGr character are reachable here and through search.'}),
-        navCluster());
+      if (ui.pickerTab === 'chars') container.append(h('div', {class: 'pk-stage'}, toolbar(), keyboard()));
       else if (ui.pickerTab === 'keys') container.append(keysTab());
       else if (ui.pickerTab === 'layers') container.append(layersTab());
       else if (ui.pickerTab === 'macros') container.append(macrosTab());
@@ -350,5 +432,5 @@
       tabs, body);
   }
 
-  A.picker = {render, assign, codeFor, hidOf, outputOf, describeChar, keyNameFor, rankKeycodes, ROWS, NAV_CLUSTER};
+  A.picker = {render, assign, codeFor, hidOf, outputOf, describeChar, keyNameFor, rankKeycodes, ROWS, NAV_CLUSTER, MODIFIER_KEYS, keyboardPlaces};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});

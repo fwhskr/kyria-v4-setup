@@ -90,6 +90,88 @@ describe('picker: editing and navigation keys on the Characters tab', () => {
   });
 });
 
+describe('picker: the Characters tab is a full-size keyboard', () => {
+  const MODS = ['KC_LSHIFT', 'KC_RSHIFT', 'KC_LCTRL', 'KC_RCTRL', 'KC_LGUI', 'KC_RGUI', 'KC_LALT', 'KC_RALT'];
+  const FKEYS = Array.from({ length: 12 }, (_, i) => `KC_F${i + 1}`);
+
+  it('has F1 to F12 and the eight modifiers as real catalog keys that assign themselves', () => {
+    A.store.ui.pickerTab = 'chars';
+    const root = A.picker.render();
+    assert.deepEqual(fidsWith(root, 'fk:'), FKEYS.map((id) => `fk:${id}`));
+    assert.deepEqual(fidsWith(root, 'mk:').sort(), MODS.map((id) => `mk:${id}`).sort());
+    for (const id of FKEYS.concat(MODS)) {
+      assert.deepEqual(KS.keycodes.check(id), [], `${id} passes the keycode check`);
+      const b = byFid(A.picker.render(), id.startsWith('KC_F') ? `fk:${id}` : `mk:${id}`);
+      assert.match(b.getAttribute('aria-label'), new RegExp(`\\(${id}\\)$`));
+      b.fire('click');
+      assert.equal(cell(), id);
+    }
+    assert.match(byFid(root, 'mk:KC_RALT').textContent, /AltGr/);
+  });
+
+  it('keeps a hold action when a modifier or function key is picked', () => {
+    S.writeTarget(target, 'LSFT_T(KC_A)', 'setup');
+    A.store.ui.pickerTab = 'chars';
+    byFid(A.picker.render(), 'fk:KC_F5').fire('click');
+    assert.equal(cell(), 'LSFT_T(KC_F5)');
+  });
+
+  // Cells a key covers; the ISO Enter leaves out the first column of its lower row.
+  const cells = (p, mode) => {
+    const x = mode === 'narrow' ? p.xs : mode === 'medium' ? p.xm : p.x;
+    const r = mode === 'narrow' ? p.rs : mode === 'medium' ? p.rm : p.r;
+    const w = mode === 'narrow' ? p.ws : p.w;
+    const out = [];
+    for (let dr = 0; dr < p.h; dr++) for (let c = x; c < x + w; c++) if (!(p.h > 1 && dr === 1 && c === x)) out.push(`${r + dr}:${c}`);
+    return out;
+  };
+  const GRID = { wide: { main: 60, nav: 12 }, medium: { main: 60, nav: 40 }, narrow: { main: 34, nav: 26 } };
+
+  for (const mode of Object.keys(GRID)) {
+    it(`${mode}: keys stay inside their grid and never overlap`, () => {
+      const places = A.picker.keyboardPlaces();
+      for (const part of ['main', 'nav']) {
+        const seen = new Map();
+        for (const p of places[part]) {
+          for (const c of cells(p, mode)) {
+            const col = Number(c.split(':')[1]);
+            assert.ok(col >= 1 && col <= GRID[mode][part], `${p.id} column ${col} is inside the ${part} grid`);
+            assert.ok(!seen.has(c), `${p.id} overlaps ${seen.get(c)} at ${c}`);
+            seen.set(c, p.id);
+          }
+        }
+      }
+    });
+  }
+
+  it('wide: the five key rows of the main block are full, with no holes', () => {
+    const covered = new Set(A.picker.keyboardPlaces().main.flatMap((p) => cells(p, 'wide')));
+    for (const row of [3, 4, 5, 6, 7]) {
+      const holes = [];
+      for (let c = 1; c <= 60; c++) if (!covered.has(`${row}:${c}`)) holes.push(c);
+      assert.deepEqual(holes, [], `grid row ${row} has no holes`);
+    }
+  });
+
+  it('narrow: splits at 7, y, h and n, every half row flush with its outer edge', () => {
+    const places = A.picker.keyboardPlaces().main;
+    const at = (id) => places.find((p) => p.id === id);
+    for (const id of ['KC_7', 'KC_Y', 'KC_H', 'KC_N', 'KC_F5']) assert.ok(at(id).rs > 8, `${id} is in the right half`);
+    for (const id of ['KC_6', 'KC_T', 'KC_G', 'KC_B', 'KC_SPACE']) assert.ok(at(id).rs <= 8, `${id} is in the left half`);
+    const rows = new Map();
+    for (const p of places) {
+      for (let r = p.rs; r < p.rs + p.h; r++) {
+        const span = rows.get(r) || [Infinity, 0];
+        rows.set(r, [Math.min(span[0], p.xs), Math.max(span[1], p.xs + p.ws - 1)]);
+      }
+    }
+    for (const [r, [first, last]] of rows) {
+      if (r <= 8) assert.equal(first, 1, `left half row ${r} starts at the left edge`);
+      else assert.equal(last, 34, `right half row ${r} ends at the right edge`);
+    }
+  });
+});
+
 describe('picker search: names people type for non-character keys', () => {
   const cases = {
     scrlk: 'KC_SCROLLLOCK', scroll: 'KC_SCROLLLOCK', 'scroll lock': 'KC_SCROLLLOCK', slck: 'KC_SCROLLLOCK',
