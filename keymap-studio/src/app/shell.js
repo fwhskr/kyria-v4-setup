@@ -143,10 +143,17 @@
         h('button', {type: 'button', class: 'button', 'data-fid': 'open', text: 'Open .vil\u2026', title: 'Open a Vial file (Ctrl+O)', on: {click: () => fileInput.click()}}),
         h('button', {type: 'button', class: 'button', 'data-fid': 'save-image', text: 'Save image', title: 'Save a PNG of all layers (pixel size is set under Reference image)',
           on: {click: () => A.sheet.save()}}),
-        A.keyboard && A.keyboard.served(location) ? h('button', {type: 'button', class: 'button', 'data-fid': 'write-keyboard', text: 'Write to keyboard',
-          title: A.keyboard.available() ? 'Write this keymap to the connected Kyria half' : 'Writing isn\u2019t available: src/core/wire.js didn\u2019t load',
-          'aria-haspopup': 'dialog', on: {click: () => A.keyboard.open()}}) : null,
-        h('button', {type: 'button', class: 'button button-primary', 'data-fid': 'export', text: 'Export .vil', title: 'Download the edited Vial file (Ctrl+S)', on: {click: exportVil}})));
+        h('button', {type: 'button', class: 'button button-primary', 'data-fid': 'export', text: 'Export .vil', title: 'Download the edited Vial file (Ctrl+S)', on: {click: exportVil}})),
+      A.keyboard ? A.keyboard.headerControls() : null);
+  }
+
+  // Header only, for keyboard state changes that leave the board and forms alone.
+  function renderHeader() {
+    if (!root) return;
+    const active = document.activeElement;
+    const fid = active && headerEl.contains(active) ? active.getAttribute('data-fid') : null;
+    A.dom.clear(headerEl).append(header());
+    if (fid) { const el = headerEl.querySelector(`[data-fid="${CSS.escape(fid)}"]`); if (el) el.focus({preventScroll: true}); }
   }
 
   function rail() {
@@ -277,8 +284,9 @@
     let resizeTimer = null;
     window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (A.store.ui.view === 'keymap') render(); }, 150); });
     if (location.hash !== `#/${A.store.ui.view}`) history.replaceState(null, '', `#/${A.store.ui.view}`);
+    if (A.keyboard) A.keyboard.start();
     render();
   }
 
-  A.shell = {mount, render, renderStatus, go, exportVil, importFile, resetToDefault, openIssues, exportName};
+  A.shell = {mount, render, renderHeader, renderStatus, go, exportVil, importFile, resetToDefault, openIssues, exportName};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});

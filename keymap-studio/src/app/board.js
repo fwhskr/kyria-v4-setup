@@ -91,6 +91,41 @@
       inheritedName: legend.inherited ? S.layerName(Number.isInteger(legend.fromLayer) ? legend.fromLayer : 0) : null});
   }
 
+  /* ---------- changes not on the keyboard yet (A.keyboard sync) ---------- */
+  function pendingView() {
+    const v = A.keyboard && typeof A.keyboard.view === 'function' ? A.keyboard.view() : null;
+    return v && v.phase === 'ready' ? v : null;
+  }
+  // Accessible-name and tooltip suffixes for a pending cell, or empty strings.
+  function pendingText(entry) {
+    if (!entry) return {label: '', title: ''};
+    const on = A.keyboard.onKeyboardText(entry.from, A.keyboard.studioNames());
+    return {label: `. Not on the keyboard yet. ${on}`, title: `\nNot on the keyboard yet. ${on}`};
+  }
+  /* Outer ring plus a diamond on the top-right corner: the cap keeps its own layer border and legends,
+     and the shape still reads where the layer colour is close to the mark colour. */
+  function markPending(g, k) {
+    const h = k / 2, o = 0.05 * k, r = 0.115 * k, cx = h + 0.012 * k, cy = -h - 0.012 * k;
+    g.prepend(s('rect', {class: 'pend-ring', x: -h - o, y: -h - o, width: k + 2 * o, height: k + 2 * o, rx: 0.14 * k, fill: 'none',
+      'stroke-width': Math.max(2, 0.036 * k).toFixed(2), 'aria-hidden': 'true'}));
+    g.append(s('path', {class: 'pend-mark', d: `M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`,
+      'stroke-width': Math.max(2, 0.03 * k).toFixed(2), 'aria-hidden': 'true'}));
+  }
+
+  const OFF_BOARD = {macro: 'macros', tap_dance: 'tap dances', combo: 'combos', key_override: 'key overrides', alt_repeat_key: 'alt repeat',
+    layout_options: 'layout options', setting: 'settings'};
+  function legendText(P, layer) {
+    const cells = P.layers.reduce((n, c) => n + (Number.isInteger(c) ? c : 0), 0);
+    const here = Number.isInteger(P.layers[layer]) ? P.layers[layer] : 0;
+    const off = (P.items || []).filter(it => it.kind !== 'key' && it.kind !== 'encoder');
+    const where = [...new Set(off.map(it => OFF_BOARD[it.kind] || 'other settings'))];
+    const list = where.length > 1 ? `${where.slice(0, -1).join(', ')} and ${where[where.length - 1]}` : where[0];
+    const rest = off.length ? `${off.length} more in ${list}.` : '';
+    if (!cells) return `No key differs from the keyboard; ${off.length} ${off.length === 1 ? 'change' : 'changes'} in ${list} ${off.length === 1 ? 'isn\u2019t' : 'aren\u2019t'} on it yet.`;
+    const lead = here === cells ? `Marked keys aren\u2019t on the keyboard yet (${here}).` : `Marked keys aren\u2019t on the keyboard yet: ${here} on this layer, ${cells} on all layers.`;
+    return rest ? `${lead} ${rest}` : lead;
+  }
+
   const sameTarget = (a, b) => !!a && !!b && a.type === b.type && ['layer', 'row', 'col', 'index', 'dir'].every(p => a[p] === b[p]);
 
   /* ---------- selection and keyboard handling ---------- */
@@ -165,13 +200,18 @@
   function layerBar() {
     const ui = A.store.ui, ws = S.ws();
     const n = ws.doc.fields.layout.length;
+    const P = pendingView();
     const tabs = [];
     for (let i = 0; i < n; i++) {
       const selected = i === ui.layer;
+      const waiting = P && Number.isInteger(P.layers[i]) ? P.layers[i] : 0;
       const tab = h('button', {type: 'button', role: 'tab', class: 'layer-tab', 'aria-selected': String(selected), tabindex: selected ? '0' : '-1',
         'data-fid': `layer-tab:${i}`, style: {'--layer': S.layerColor(i)},
         on: {click: () => switchLayer(i, `layer-tab:${i}`), keydown: e => tabKeys(e, i, n)}},
-      h('span', {class: 'layer-num', text: String(i)}), h('span', {class: 'layer-name', text: S.layerName(i)}));
+      h('span', {class: 'layer-num', text: String(i)}), h('span', {class: 'layer-name', text: S.layerName(i)}),
+      waiting ? h('span', {class: 'layer-pending', 'data-pending': String(waiting)},
+        h('span', {class: 'kb-diamond', 'aria-hidden': 'true'}), h('span', {text: String(waiting)}),
+        h('span', {class: 'visually-hidden', text: ` not on the keyboard yet`})) : null);
       tabs.push(tab);
     }
     return h('div', {class: 'layer-bar'},
@@ -233,6 +273,7 @@
       'aria-label': `${S.layerName(layer)} layer keys. Arrow keys move between keys; Enter selects.`});
     const items = [];
     const f = S.fields();
+    const P = pendingView();
     for (const key of KS.board.keys) {
       const code = f.layout[layer] && f.layout[layer][key.row] ? f.layout[layer][key.row][key.col] : -1;
       if (code === -1 || code === undefined) continue;
@@ -240,10 +281,13 @@
       const t = {type: 'key', layer, row: key.row, col: key.col};
       const fid = `key:${key.row}:${key.col}`;
       const selected = sameTarget(ui.target, t);
-      const g = A.keycap.svg(m, {class: ['key', selected && 'is-selected'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
-        'aria-label': `${S.keyName(key.row, key.col)}: ${m.a11y}`, 'data-fid': fid, 'data-row': key.row, 'data-col': key.col,
+      const pend = P ? P.keys[`${layer}:${key.row}:${key.col}`] : null;
+      const pt = pendingText(pend);
+      const g = A.keycap.svg(m, {class: ['key', selected && 'is-selected', pend && 'is-pending'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
+        'aria-label': `${S.keyName(key.row, key.col)}: ${m.a11y}${pt.label}`, 'data-fid': fid, 'data-row': key.row, 'data-col': key.col,
         transform: `translate(${(ox + key.x * p).toFixed(2)} ${(oy + key.y * p).toFixed(2)}) rotate(${key.angle || 0})`});
-      g.append(s('title', {}, `${S.keyName(key.row, key.col)} (matrix ${key.row}, ${key.col}): ${typeof code === 'string' ? code : code}`));
+      if (pend) markPending(g, k);
+      g.append(s('title', {}, `${S.keyName(key.row, key.col)} (matrix ${key.row}, ${key.col}): ${typeof code === 'string' ? code : code}${pt.title}`));
       svg.append(g);
       items.push({el: g, cx: key.x, cy: key.y, target: t, fid});
     }
@@ -273,10 +317,13 @@
           const fid = `enc:${idx}:${dir}`;
           const selected = sameTarget(ui.target, t);
           const name = `${slot.enc.label}, ${dir === 0 ? 'clockwise' : 'counter-clockwise'}`;
-          const g = A.keycap.svg(m, {class: ['key', 'key-mini', selected && 'is-selected'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
-            'aria-label': `${name}: ${m.a11y}${state && !state.on ? '. Off in layout options' : ''}`, 'data-fid': fid,
+          const pend = P ? P.encoders[`${layer}:${idx}:${dir}`] : null;
+          const pt = pendingText(pend);
+          const g = A.keycap.svg(m, {class: ['key', 'key-mini', selected && 'is-selected', pend && 'is-pending'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
+            'aria-label': `${name}: ${m.a11y}${state && !state.on ? '. Off in layout options' : ''}${pt.label}`, 'data-fid': fid,
             transform: `translate(${mx.toFixed(2)} ${my.toFixed(2)})`});
-          g.append(s('title', {}, name));
+          if (pend) markPending(g, km);
+          g.append(s('title', {}, `${name}${pt.title}`));
           dial.append(g);
           dial.append(s('text', {x: mx.toFixed(1), y: (my + km / 2 + 15).toFixed(1), class: 'dial-arrow', 'text-anchor': 'middle', 'aria-hidden': 'true'}, dir === 0 ? '\u21bb CW' : '\u21ba CCW'));
           encItems.push({el: g, cx: mx / p, cy: my / p, target: t, fid});
@@ -305,6 +352,7 @@
     const cells = (KS.board.moduleCells || []).filter(c => f.layout[layer] && f.layout[layer][c.row] && f.layout[layer][c.row][c.col] !== -1);
     if (!cells.length) return null;
     const km = Math.round(k * 0.8), gap = Math.round(k * 0.12);
+    const P = pendingView();
     const groups = ['left', 'right'].map(side => {
       const list = cells.filter(c => c.side === side);
       if (!list.length) return null;
@@ -319,9 +367,12 @@
         const t = {type: 'key', layer, row: c.row, col: c.col};
         const fid = `key:${c.row}:${c.col}`;
         const selected = sameTarget(ui.target, t);
-        const g = A.keycap.svg(m, {class: ['key', 'key-mini', selected && 'is-selected'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
-          'aria-label': `${S.keyName(c.row, c.col)} (matrix ${c.row}, ${c.col}): ${m.a11y}`, 'data-fid': fid, transform: `translate(${x} ${y})`});
-        g.append(s('title', {}, `Matrix ${c.row}, ${c.col}`));
+        const pend = P ? P.keys[`${layer}:${c.row}:${c.col}`] : null;
+        const pt = pendingText(pend);
+        const g = A.keycap.svg(m, {class: ['key', 'key-mini', selected && 'is-selected', pend && 'is-pending'], role: 'button', tabindex: '-1', 'aria-pressed': String(selected),
+          'aria-label': `${S.keyName(c.row, c.col)} (matrix ${c.row}, ${c.col}): ${m.a11y}${pt.label}`, 'data-fid': fid, transform: `translate(${x} ${y})`});
+        if (pend) markPending(g, km);
+        g.append(s('title', {}, `Matrix ${c.row}, ${c.col}${pt.title}`));
         svg.append(g);
         items.push({el: g, cx: x / km, cy: 0, target: t, fid});
       });
@@ -348,10 +399,14 @@
     if (ui.layer >= n) ui.layer = 0;
     main.append(h('h1', {class: 'visually-hidden', text: 'Keymap'}));
     main.append(layerBar());
+    const P = pendingView();
     const meta = h('p', {class: 'layer-meta'},
       h('span', {class: 'layer-swatch', style: {'--layer': S.layerColor(ui.layer)}, 'aria-hidden': 'true'}),
       h('span', {text: reachedBy(ui.layer)}),
-      hasTransparent(ui.layer) ? h('span', {class: 'layer-meta-note', text: `Dashed keys pass through to ${S.layerName(0)}.`}) : null);
+      hasTransparent(ui.layer) ? h('span', {class: 'layer-meta-note', text: `Dashed keys pass through to ${S.layerName(0)}.`}) : null,
+      P && P.count ? h('span', {class: 'kb-legend', 'data-kb-legend': ''},
+        h('span', {class: 'kb-legend-key', 'aria-hidden': 'true'}, h('span', {class: 'kb-diamond'})),
+        h('span', {text: legendText(P, ui.layer)})) : null);
     main.append(meta);
     const frame = h('div', {class: 'board-frame'});
     main.append(frame);
@@ -362,5 +417,5 @@
     main.append(A.dock());
   }
 
-  A.board = {renderView, computeK, extent, KEY_U, keyModel, tapLegend, encoderModel, encoderSlots, shortEncoderLabel, optionState, reachedBy, select, sameTarget, clearTarget, copyTarget, pasteTarget, switchLayer};
+  A.board = {renderView, computeK, extent, KEY_U, keyModel, tapLegend, encoderModel, encoderSlots, shortEncoderLabel, optionState, reachedBy, legendText, pendingText, select, sameTarget, clearTarget, copyTarget, pasteTarget, switchLayer};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
