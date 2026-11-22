@@ -105,11 +105,11 @@
   /* Outer ring plus a diamond on the top-right corner: the cap keeps its own layer border and legends,
      and the shape still reads where the layer colour is close to the mark colour. */
   function markPending(g, k) {
-    const h = k / 2, o = 0.032 * k, r = 0.09 * k;
-    g.prepend(s('rect', {class: 'pend-ring', x: -h - o, y: -h - o, width: k + 2 * o, height: k + 2 * o, rx: 0.12 * k, fill: 'none',
-      'stroke-width': Math.max(1.5, 0.028 * k).toFixed(2), 'aria-hidden': 'true'}));
-    g.append(s('path', {class: 'pend-mark', d: `M ${h} ${-h - r} L ${h + r} ${-h} L ${h} ${-h + r} L ${h - r} ${-h} Z`,
-      'stroke-width': Math.max(1.5, 0.026 * k).toFixed(2), 'aria-hidden': 'true'}));
+    const h = k / 2, o = 0.05 * k, r = 0.115 * k, cx = h + 0.012 * k, cy = -h - 0.012 * k;
+    g.prepend(s('rect', {class: 'pend-ring', x: -h - o, y: -h - o, width: k + 2 * o, height: k + 2 * o, rx: 0.14 * k, fill: 'none',
+      'stroke-width': Math.max(2, 0.036 * k).toFixed(2), 'aria-hidden': 'true'}));
+    g.append(s('path', {class: 'pend-mark', d: `M ${cx} ${cy - r} L ${cx + r} ${cy} L ${cx} ${cy + r} L ${cx - r} ${cy} Z`,
+      'stroke-width': Math.max(2, 0.03 * k).toFixed(2), 'aria-hidden': 'true'}));
   }
 
   const OFF_BOARD = {macro: 'macros', tap_dance: 'tap dances', combo: 'combos', key_override: 'key overrides', alt_repeat_key: 'alt repeat',
