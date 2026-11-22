@@ -433,12 +433,12 @@
           st.identity ? h('p', {class: 'hint'}, 'Identity: ', h('span', {class: 'mono', text: st.identity})) : null], actions: [closeButton(true)]};
         case 'prepare': return {text: 'Couldn\u2019t prepare the keymap', nodes: [para(`The keymap couldn\u2019t be turned into keyboard data: ${st.message}. Nothing was written.`)], actions: [closeButton(false), retryButton('Read again')]};
         case 'same': return {text: 'No changes', nodes: [h('p', {class: 'kb-lead', text: 'No changes: the keyboard already matches.'}),
-          para('The connected half holds exactly this keymap. The other half keeps its own copy.', 'hint')], actions: [closeButton(true)]};
+          para('The half plugged in over USB already has this keymap. It runs the keys of both halves. If you ever plug in the other half instead, check again: it has its own copy.', 'hint')], actions: [closeButton(true)]};
         case 'preview': {
           const n = st.items.length;
           return {text: `${plural(n, 'change', 'changes')} to write`, nodes: [
             h('p', {class: 'kb-count', text: n ? plural(n, 'change', 'changes') : 'Nothing writable'}),
-            para('Only the connected half is written. The other half keeps its own copy.', 'hint kb-half'),
+            para('Written to the half plugged in over USB, which runs the keys of both halves, so typing as usual with the halves linked by their cable is fine. If you ever plug in the other half instead, write again: it has its own copy.', 'hint kb-half'),
             st.notice ? para(st.notice, 'notice') : null,
             st.lockError ? h('p', {class: 'notice notice-danger', role: 'alert', text: `The keyboard couldn\u2019t be locked again (${st.lockError}).`}) : null,
             st.needUnlock && st.canWrite ? para('Macros change, so the keyboard has to be unlocked first: you\u2019ll hold B and J for about five seconds.', 'notice notice-warning') : null,
