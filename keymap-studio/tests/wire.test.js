@@ -196,3 +196,69 @@ test('oversize macros and unknown setting widths are unsupported', () => {
   assert.ok(target.unsupported.some(x => x.path === 'macro'));
   assert.ok(target.unsupported.some(x => x.path === 'settings[999]'));
 });
+
+function matchingState(doc) {
+  const current = liveState(), target = KS.wire.build(doc, current);
+  return {...current, keymap:target.keymap, macros:target.macros, dynamic:target.dynamic,
+    encoders:target.encoders, layoutOptions:target.layoutOptions,
+    settings:{...current.settings, ...target.settings}};
+}
+
+test('pending highlights each changed key and encoder direction', () => {
+  const doc = fixture(), current = matchingState(doc);
+  const before = doc.fields.layout[0][0][1];
+  doc.fields.layout[0][0][1] = 'KC_C';
+  doc.fields.encoder_layout[0][0] = ['KC_A', 'KC_B'];
+  const result = KS.wire.pending(doc, current);
+  assert.deepEqual(result.items, KS.wire.diff(current, KS.wire.build(doc, current)));
+  assert.equal(result.count, 2);
+  assert.deepEqual(result.keys['0:0:1'], {from:KS.wire.decode(KS.wire.encode(before)), to:'KC_C'});
+  assert.deepEqual(result.encoders['0:0:0'], {from:'KC_VOLD', to:'KC_A'});
+  assert.deepEqual(result.encoders['0:0:1'], {from:'KC_VOLU', to:'KC_B'});
+  assert.equal(result.layers[0], 3);
+  assert.ok(result.layers.slice(1).every(n => n === 0));
+});
+
+test('revert applies all supported changes as one history step', () => {
+  const doc = fixture(), current = matchingState(doc);
+  doc.fields.layout[0][0][1] = 'KC_C';
+  doc.fields.encoder_layout[0][0] = ['KC_A', 'KC_B'];
+  doc.fields.macro[0] = [['text', 'hello']];
+  doc.fields.tap_dance[0][0] = 'KC_A';
+  doc.fields.combo[0][0] = 'KC_A';
+  doc.fields.key_override[0].trigger = 'KC_A';
+  doc.fields.alt_repeat_key[0].keycode = 'KC_A';
+  doc.fields.settings.find(([id]) => id === 7)[1] = 201;
+  doc.fields.layout_options = 1;
+  const changes = KS.wire.pending(doc, current);
+  assert.ok(changes.count >= 8);
+  const result = KS.wire.revert(doc, current);
+  assert.deepEqual(result.skipped, []);
+  for (const type of ['key.set', 'encoder.set', 'macro.set', 'tapDance.set', 'combo.set', 'keyOverride.set', 'altRepeat.set', 'setting.set', 'layoutOptions.set']) assert.ok(result.ops.some(op => op.type === type), type);
+  const history = KS.history.commit(KS.history.create(KS.workspace.create(doc)), {type:'batch', ops:result.ops});
+  assert.equal(KS.wire.pending(history.present.doc, current).count, 0);
+  assert.equal(KS.wire.pending(KS.history.undo(history).present.doc, current).count, changes.count);
+});
+
+test('macro parser round trips text, all key actions, extended escape and delay', () => {
+  const doc = fixture(), current = liveState();
+  doc.fields.macro = [[['text','Hello'], ['tap','KC_A'], ['down','KC_B'], ['up','KC_C'],
+    ['tap','TO(0)'], ['down','MO(1)'], ['up','TO(0)'], ['delay',0], ['delay',65024]]];
+  const bytes = KS.wire.build(doc, current).macros;
+  assert.ok(bytes.includes('010552ff'));
+  assert.deepEqual(KS.wire.macroActions(bytes, 1), doc.fields.macro);
+  doc.fields.macro = KS.wire.macroActions(bytes, 1);
+  assert.equal(KS.wire.build(doc, current).macros, bytes);
+});
+
+test('revert skips unknown keycodes and malformed macros', () => {
+  const doc = fixture(), current = matchingState(doc);
+  const offset = 2 * 1;
+  current.keymap = current.keymap.slice(0, offset * 2) + '7f50' + current.keymap.slice((offset + 2) * 2);
+  current.macros = '010800' + current.macros.slice(6);
+  const result = KS.wire.revert(doc, current);
+  assert.ok(result.skipped.some(x => x.path === 'layout[0][0][1]' && x.reason.includes('0x7F50')));
+  assert.ok(result.skipped.some(x => x.path === 'macro[0]'));
+  assert.ok(!result.ops.some(x => x.type === 'key.set' && x.row === 0 && x.col === 1));
+  assert.ok(!result.ops.some(x => x.type === 'macro.set' && x.index === 0));
+});
