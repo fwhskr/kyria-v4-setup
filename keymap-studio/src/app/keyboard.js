@@ -1,6 +1,7 @@
 /*
  * Write to keyboard: reads the connected Kyria half through the studio server (/api/keyboard),
- * previews what differs from the open keymap and writes only that (.nova/contract-keyboard.md).
+ * previews what differs from the open keymap and writes only that (.nova/contract-keyboard.md). It also keeps
+ * the last read in memory to mark and discard what isn't on the keyboard yet (.nova/contract-pending.md).
  * groupChanges, writeBody and createFlow are pure and take fetch, timers and KS.wire as arguments so
  * the tests drive them without a browser; only open() touches the DOM.
  */
@@ -301,6 +302,110 @@
     return {read, write, cancelUnlock, close, canClose, get state() { return state; }};
   }
 
+  /*
+   * What the connected keyboard holds, kept in memory only (.nova/contract-pending.md, UI). Phases: idle,
+   * checking, ready (has `current`), disconnected, mismatch, error, unavailable. view() recomputes
+   * KS.wire.pending from the cached keyboard state whenever the document changes; it never reads the keyboard.
+   */
+  const EMPTY = Object.freeze({count: 0, items: [], keys: {}, encoders: {}, layers: [], unsupported: []});
+  const canCompare = wire => !!wire && ['pending', 'revert', 'build', 'diff'].every(n => typeof wire[n] === 'function');
+
+  function createSync({fetch: fetchFn, wire, getDoc, onChange = () => {}, now = () => Date.now()} = {}) {
+    let state = {phase: 'idle', checking: false};
+    let inflight = null;
+    let lastRead = -Infinity;
+    let memo = null;
+
+    function set(next) { state = next; onChange(state); return state; }
+
+    async function read() {
+      let res;
+      try { res = await fetchFn(API, {method: 'GET', cache: 'no-store', headers: {Accept: 'application/json'}}); }
+      catch (e) { return {status: 0, ok: false, body: null, network: e && e.message ? e.message : 'no answer'}; }
+      let json = null;
+      try { json = await res.json(); } catch (_) { json = null; }
+      return {status: res.status, ok: !!res.ok, body: json};
+    }
+
+    function check() {
+      if (!canCompare(wire)) return Promise.resolve(state.phase === 'unavailable' ? state : set({phase: 'unavailable', checking: false}));
+      if (inflight) return inflight;
+      const before = state;
+      set(Object.assign({}, before, {phase: before.phase === 'idle' ? 'checking' : before.phase, checking: true}));
+      inflight = read().then(r => {
+        lastRead = now();
+        // Busy means another studio request holds the keyboard; that request reads again when it ends.
+        if (r.status === 409 && errorText(r) === 'busy') return set(Object.assign({}, before, {checking: false}));
+        if (!r.ok || !isObject(r.body)) return set({phase: 'error', checking: false, message: readFailure(r)});
+        const b = r.body;
+        if (b.connected !== true) return set({phase: 'disconnected', checking: false, detail: typeof b.error === 'string' ? clean(b.error) : ''});
+        if (b.uidOk !== true) return set({phase: 'mismatch', checking: false});
+        return set({phase: 'ready', checking: false, current: b});
+      }).finally(() => { inflight = null; });
+      return inflight;
+    }
+
+    function view() {
+      const doc = getDoc();
+      if (memo && memo.doc === doc && memo.state === state) return memo.view;
+      let v;
+      if (state.phase === 'ready') {
+        try {
+          const p = wire.pending(doc, state.current);
+          v = Object.assign({}, EMPTY, p, {phase: 'ready', checking: state.checking, current: state.current});
+        } catch (e) {
+          v = Object.assign({}, EMPTY, {phase: 'compare', checking: state.checking, message: e && e.message ? clean(e.message) : 'unknown error'});
+        }
+      } else v = Object.assign({}, EMPTY, {phase: state.phase, checking: state.checking, message: state.message || '', detail: state.detail || ''});
+      memo = {doc, state, view: v};
+      return v;
+    }
+
+    return {check, view, settled: () => inflight || Promise.resolve(state), sinceRead: () => now() - lastRead, get state() { return state; }};
+  }
+
+  // Header status line for a sync view: {text, tone, detail}. tone is pending, ok, muted or danger.
+  function syncStatus(v) {
+    const unsupported = Array.isArray(v.unsupported) ? v.unsupported.length : 0;
+    const cannot = unsupported ? `${plural(unsupported, 'item', 'items')} can\u2019t be written to the keyboard; Write to keyboard lists them.` : '';
+    switch (v.phase) {
+      case 'ready':
+        if (v.count > 0) return {text: `${plural(v.count, 'change', 'changes')} not on the keyboard yet`, tone: 'pending', detail: cannot};
+        if (unsupported) return {text: `${plural(unsupported, 'item', 'items')} can\u2019t be written to the keyboard`, tone: 'danger', detail: 'Write to keyboard lists them.'};
+        return {text: 'Keyboard matches', tone: 'ok', detail: 'Everything in the keymap is on the connected keyboard.'};
+      case 'checking': return {text: 'Checking the keyboard\u2026', tone: 'muted', detail: ''};
+      case 'disconnected': return {text: 'Keyboard not connected', tone: 'muted', detail: `Plug a Kyria half in with its USB cable, then check again.${v.detail ? ` The server said: ${v.detail}.` : ''}`};
+      case 'mismatch': return {text: 'A different keyboard is connected', tone: 'danger', detail: 'Its Vial identity doesn\u2019t match the Kyria uid, so the studio doesn\u2019t compare with it.'};
+      case 'error': return {text: 'Couldn\u2019t read the keyboard', tone: 'danger', detail: v.message || ''};
+      case 'compare': return {text: 'Couldn\u2019t compare with the keyboard', tone: 'danger', detail: `The keymap couldn\u2019t be turned into keyboard data: ${v.message}.`};
+      case 'unavailable': return {text: 'Keyboard comparison isn\u2019t available', tone: 'danger', detail: 'src/core/wire.js didn\u2019t load the pending and revert functions. Reload the page.'};
+      default: return {text: 'Keyboard not checked yet', tone: 'muted', detail: ''};
+    }
+  }
+
+  // "On the keyboard: t hold Super (LGUI_T(KC_T))"; the code is left out when the legend already is the code.
+  function onKeyboardText(from, names) {
+    const code = shown(from);
+    const legend = typeof from === 'string' && from ? names.describe(from) : code;
+    return `On the keyboard: ${legend}${legend !== code ? ` (${code})` : ''}`;
+  }
+
+  /*
+   * Everything the discard dialog needs: the revert ops as one batch, what they skip, and how many changes
+   * applying them really removes (pending before minus after), which is the history label's count.
+   */
+  function discardPlan({wire, workspace, ws, current}) {
+    const before = wire.pending(ws.doc, current);
+    const r = wire.revert(ws.doc, current);
+    const ops = Array.isArray(r && r.ops) ? r.ops : [];
+    const skipped = Array.isArray(r && r.skipped) ? r.skipped : [];
+    if (!ops.length) return {before, ops, skipped, op: null, after: before, discarded: 0};
+    const op = {type: 'batch', ops};
+    const after = wire.pending(workspace.apply(ws, op).doc, current);
+    return {before, ops, skipped, op, after, discarded: Math.max(0, before.count - after.count)};
+  }
+  const discardLabel = n => `Discarded ${plural(n, 'unwritten change', 'unwritten changes')}`;
+
   /* ---------- studio naming ---------- */
   function shortLegend(legend, code) {
     if (!legend || legend.unknown || legend.kind === 'raw') return String(code);
@@ -361,6 +466,8 @@
       if (back) back.focus();
       pending.then(lock => {
         if (lock && lock.lockError) { S.setMessage(`The keyboard couldn\u2019t be locked again (${lock.lockError}). Unplug it and plug it back in to lock it.`, 'alert'); S.render(); }
+        // Read again once the dialog's last request (the relock) is done, so a write clears the marks.
+        check();
       });
     }
 
@@ -498,10 +605,108 @@
     document.body.append(dlg);
     dlg.showModal();
     active = dlg;
-    flow.read();
+    // The server answers one keyboard request at a time; let a background read finish first.
+    (sync ? sync.settled() : Promise.resolve()).then(() => flow.read());
     return dlg;
   }
 
+  /* ---------- keyboard state in the studio ---------- */
+  const FOCUS_GAP_MS = 2000;
+  let sync = null, liveEl = null, lastAnnounced = '', discarding = false;
+
+  const editingText = () => { const a = document.activeElement; return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); };
+
+  function changed(st) {
+    const text = syncStatus(sync.view()).text;
+    if (liveEl && !st.checking && text !== lastAnnounced) { liveEl.textContent = text; lastAnnounced = text; }
+    // Starting a read changes only the header; a finished read re-marks the board unless a text field has focus.
+    if (st.checking || editingText()) A.shell.renderHeader(); else A.state.render();
+  }
+
+  function start() {
+    if (sync || !served(globalThis.location) || typeof globalThis.fetch !== 'function') return sync;
+    sync = createSync({fetch: globalThis.fetch.bind(globalThis), wire: KS.wire, getDoc: () => A.state.ws().doc, onChange: st => changed(st)});
+    liveEl = A.dom.h('p', {class: 'visually-hidden', role: 'status', 'aria-live': 'polite', 'data-kb-live': ''});
+    document.body.append(liveEl);
+    window.addEventListener('focus', () => { if (!active && sync.sinceRead() > FOCUS_GAP_MS) check(); });
+    check();
+    return sync;
+  }
+
+  // Never reads while a keyboard dialog is open: Write owns the keyboard then, and both read again on close.
+  function check() { return sync && !active && !discarding ? sync.check() : Promise.resolve(sync ? sync.state : null); }
+  const view = () => (sync ? sync.view() : null);
+
+  function headerControls() {
+    if (!sync) return null;
+    const {h} = A.dom;
+    const v = sync.view(), st = syncStatus(v);
+    const n = v.phase === 'ready' ? v.count : 0;
+    const canDiscard = v.phase === 'ready' && n > 0;
+    const statusText = v.checking && v.phase !== 'checking' ? `${st.text}, checking again\u2026` : st.text;
+    return h('div', {class: 'kb-sync', role: 'group', 'aria-label': 'Keyboard'},
+      h('p', {class: ['kb-status', `is-${st.tone}`], 'data-kb-status': v.phase, title: st.detail || null, 'aria-busy': v.checking ? 'true' : null},
+        st.tone === 'pending' ? h('span', {class: 'kb-diamond', 'aria-hidden': 'true'}) : null,
+        h('span', {class: 'kb-status-text', text: statusText}),
+        st.detail ? h('span', {class: 'visually-hidden', text: ` ${st.detail}`}) : null),
+      h('button', {type: 'button', class: 'button button-quiet button-small', 'data-fid': 'kb-check', text: 'Check keyboard',
+        title: 'Read the connected keyboard again', on: {click: () => check()}}),
+      h('button', {type: 'button', class: 'button button-quiet', 'data-fid': 'kb-discard', text: 'Discard unwritten changes', disabled: !canDiscard,
+        title: canDiscard ? 'Put the marked keys back to what the keyboard has' : (v.phase === 'ready' ? 'Nothing to discard: the keyboard matches' : 'Connect the keyboard to see what isn\u2019t on it'),
+        'aria-haspopup': 'dialog', on: {click: () => discard()}}),
+      h('button', {type: 'button', class: ['button', n && 'has-pending'], 'data-fid': 'write-keyboard', 'aria-haspopup': 'dialog',
+        title: A.keyboard.available() ? 'Write this keymap to the connected Kyria half' : 'Writing isn\u2019t available: src/core/wire.js didn\u2019t load',
+        'aria-label': n ? `Write to keyboard, ${plural(n, 'change', 'changes')} not on the keyboard yet` : null, on: {click: () => open()}},
+      h('span', {text: 'Write to keyboard'}),
+      n ? h('span', {class: 'kb-chip', 'aria-hidden': 'true'}, h('span', {class: 'kb-diamond'}), h('span', {text: String(n)})) : null));
+  }
+
+  async function discard() {
+    if (!sync || active || discarding) return;
+    const S = A.state;
+    const {h} = A.dom;
+    const v = sync.view();
+    if (v.phase !== 'ready' || !v.count) return;
+    let plan;
+    try { plan = discardPlan({wire: KS.wire, workspace: KS.workspace, ws: S.ws(), current: v.current}); }
+    catch (e) { S.report(e, 'Preparing to discard the unwritten changes'); S.render(); return; }
+    const names = studioNames();
+    const items = plan.before.items || [];
+    const SHOW = 8;
+    const rows = items.slice(0, SHOW).map(it => {
+      const l = itemLabel(it, names);
+      return h('li', {class: 'kb-item'}, h('span', {class: 'kb-place', text: l.full || l.label}),
+        h('span', {class: 'kb-change'},
+          h('span', {class: 'kb-from', text: l.to}),
+          h('span', {class: 'kb-arrow', 'aria-hidden': 'true', text: '\u2192'}),
+          h('span', {class: 'visually-hidden', text: ' goes back to '}),
+          h('span', {class: 'kb-to', text: l.from})));
+    });
+    if (items.length > SHOW) rows.push(h('li', {class: 'kb-item kb-more', text: `and ${items.length - SHOW} more`}));
+    const skippedView = plan.skipped.length ? h('div', {class: 'notice notice-warning kb-unsupported'},
+      h('p', {class: 'kb-notice-title', text: `${plural(plan.skipped.length, 'item stays', 'items stay')} as in the keymap: the keyboard\u2019s value can\u2019t be put back into the file.`}),
+      h('ul', {class: 'kb-unsupported-list'}, plan.skipped.map(sk => h('li', {},
+        sk.path ? h('span', {class: 'mono', text: String(sk.path)}) : null, sk.path ? ': ' : null, `${clean(sk.reason || 'not supported')}.`)))) : null;
+    const d = plan.discarded;
+    const body = h('div', {class: 'kb-body kb-discard'},
+      d ? h('p', {class: 'dialog-text', text: 'The keymap goes back to what the connected keyboard has for these. Undo brings them back.'})
+        : h('p', {class: 'dialog-text', text: 'None of these can be put back from the keyboard, so nothing changes.'}),
+      h('div', {class: 'kb-groups', tabindex: '0', role: 'region', 'aria-label': 'Unwritten changes'}, h('ul', {class: 'kb-list'}, rows)),
+      skippedView);
+    discarding = true;
+    const choice = await A.dom.choose({title: d ? `Discard ${plural(d, 'unwritten change', 'unwritten changes')}?` : 'Nothing can be discarded', body: [body], danger: true,
+      actions: d ? [{label: 'Cancel', value: null}, {label: `Discard ${plural(d, 'change', 'changes')}`, value: 'discard', primary: true}] : [{label: 'Close', value: null, primary: true}]});
+    discarding = false;
+    if (choice !== 'discard') return;
+    const ok = S.commit(plan.op, discardLabel(d), {noRender: true});
+    if (ok && plan.skipped.length) {
+      S.setMessage(`${discardLabel(d)}. ${plural(plan.skipped.length, 'item stays', 'items stay')} as in the keymap because the keyboard\u2019s value can\u2019t be put back into the file.`, 'status');
+    }
+    S.render('write-keyboard');
+    if (ok) check();
+  }
+
   A.keyboard = {API, POLL_MS, groupChanges, itemLabel, writeBody, writtenSummary, createFlow, shortLegend, settingName, studioNames, served, open,
+    createSync, syncStatus, onKeyboardText, discardPlan, discardLabel, canCompare, start, check, view, headerControls, discard,
     available: () => !!(KS.wire && typeof KS.wire.build === 'function' && typeof KS.wire.diff === 'function')};
 })(globalThis.KyriaStudio = globalThis.KyriaStudio || {});
