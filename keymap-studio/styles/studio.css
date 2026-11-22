@@ -209,39 +209,84 @@
   .segment span { display: block; padding: 6px 12px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
   .segment input:checked + span { background: var(--surface-selected); color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
   .segment input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .pk-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
-  .pk-modifiers { min-height: 32px; padding: 4px 0; font-weight: 600; }
-  .pk-board { --u: min(54px, calc((100cqi - 8px) / 14.6)); display: flex; flex-direction: column; gap: calc(var(--u) * 0.1); margin: var(--space-3) 0; }
-  .pk-row { display: flex; gap: calc(var(--u) * 0.1); margin-inline-start: calc(var(--offset) * var(--u) * 0.6); }
+  /* Characters tab: toolbar and keyboard share one centred column exactly as wide as the keyboard. */
+  .pk-stage { width: fit-content; max-width: 100%; margin-inline: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+  .pk-toolbar { contain: inline-size; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-5); }
+  .pk-links { display: flex; flex-wrap: wrap; gap: 0 var(--space-5); }
+  .pk-link { min-height: 32px; padding: 4px 0; font-weight: 600; }
+  /* Narrow only, it scrolls sideways below a 38 px key; the padding keeps focus outlines of edge keys visible. */
+  .pk-scroll { max-width: calc(100% + 8px); padding: 4px; margin: -4px; }
+  /* Full-size ISO board on quarter-key columns (picker.js keyboardPlaces). --P is the key pitch:
+     wide, the main block and navigation cluster side by side, up to 72 px (life size, 19 mm). */
+  .pk-keys {
+    --P: clamp(44px, calc(100cqi / 18.5), 72px);
+    --g: clamp(3px, calc(var(--P) * 0.1 - 1px), 6px);
+    --q: calc(var(--P) / 4);
+    --kh: calc(var(--P) - var(--g));
+    --rows: var(--kh) calc(var(--P) * 0.4 - var(--g)) repeat(5, var(--kh));
+    --u: var(--P);
+    display: grid; grid-template-columns: auto auto; grid-template-areas: "main nav" "hint hint";
+    column-gap: calc(var(--P) * 0.5 - var(--g)); row-gap: var(--space-3); align-items: start;
+    margin-inline-end: calc(-1 * var(--g));
+  }
+  .pk-main, .pk-nav { display: grid; grid-template-rows: var(--rows); row-gap: var(--g); }
+  .pk-main { grid-area: main; grid-template-columns: repeat(60, var(--q)); }
+  .pk-nav { grid-area: nav; grid-template-columns: repeat(12, var(--q)); }
+  .pk-hint { grid-area: hint; contain: inline-size; }
+  .kb-key { grid-column: var(--x) / span var(--w, 4); grid-row: var(--r) / span var(--h, 1); margin-inline-end: var(--g); }
   .pk {
-    position: relative; width: var(--u); height: calc(var(--u) * 1.04); flex: none; padding: 0;
+    position: relative; min-width: 0; padding: 0;
     background: var(--keycap); border: 1px solid var(--line-control); border-radius: 7px; cursor: pointer;
     display: grid; place-items: center; color: var(--text);
   }
   .pk:hover { border-color: var(--accent); }
+  .pk:active { background: var(--surface-selected); }
   .pk-char { font-family: var(--font-legend); font-size: max(17px, calc(var(--u) * 0.44)); font-weight: 600; line-height: 1; }
-  .pk-base { position: absolute; top: 3px; left: 5px; font-size: 12px; color: var(--text-muted); line-height: 1; }
-  .pk-dead { position: absolute; bottom: 2px; left: 0; right: 0; font-size: 12px; color: var(--level-shift); line-height: 1; }
+  .pk-base { position: absolute; top: 3px; left: 5px; font-size: clamp(11px, calc(var(--u) * 0.2), 14px); color: var(--text-muted); line-height: 1; }
+  .pk-dead { position: absolute; bottom: 2px; left: 0; right: 0; font-size: clamp(11px, calc(var(--u) * 0.2), 14px); color: var(--level-shift); line-height: 1; }
   .pk.is-dead { border-style: dotted; border-width: 2px; border-color: var(--level-shift); }
   .pk.is-empty { background: var(--surface-app); border-color: var(--keycap-empty-line); cursor: default; }
-  /* Editing and navigation keys: the character board's keycap unit, never below a 44 px touch target. */
-  .nk {
-    --nu: clamp(44px, calc((100cqi - 8px) / 14.6), 54px); --ng: calc(var(--nu) * 0.1);
-    display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-4) var(--nu); margin-top: var(--space-4);
+  .nk-text { font-family: var(--font-legend); font-size: clamp(11px, calc(var(--u) * 0.25), 16px); font-weight: 600; line-height: 1; white-space: nowrap; }
+  .nk-key.is-arrow .nk-text { font-size: max(18px, calc(var(--u) * 0.42)); }
+  /* ISO Enter: an L over the q and a rows. The button is clipped to the L (hit area included); ::before
+     draws the q-row part, ::after the narrower a-row part, its missing top edge hiding ::before's bottom edge. */
+  .pk.is-iso-enter {
+    --bw: 1px; --bc: var(--line-control);
+    background: transparent; border: 0; place-items: start stretch;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, var(--q) 100%, var(--q) var(--kh), 0 var(--kh));
   }
-  .nk-group { display: flex; flex-direction: column; gap: var(--ng); }
-  .nk-edit { width: calc(var(--nu) * 5 + var(--ng) * 2); }
-  .nk-row { display: flex; gap: var(--ng); }
-  .nk-row:first-child { margin-bottom: calc(var(--nu) * 0.35); }
-  /* Tab, Caps and Space line up with the Delete, arrow-up and arrow rows, as on a full-size board. */
-  .nk-edit .nk-row:nth-child(2) { margin-top: auto; }
-  .nk-skip { width: var(--nu); flex: none; }
-  .nk-key { --u: var(--nu); width: calc(var(--w, 1) * var(--nu) + (var(--w, 1) - 1) * var(--ng)); }
-  .nk-key.is-fill { flex: 1 1 auto; }
-  .nk-key:active { background: var(--surface-selected); }
-  .nk-text { font-family: var(--font-legend); font-size: clamp(12px, calc(var(--nu) * 0.27), 15px); font-weight: 600; line-height: 1; white-space: nowrap; }
-  .nk-key.is-arrow .nk-text { font-size: max(18px, calc(var(--nu) * 0.42)); }
-  .nk-more { align-self: flex-end; min-height: 32px; padding: 4px 0; font-weight: 600; }
+  .pk.is-iso-enter::before, .pk.is-iso-enter::after { content: ""; position: absolute; background: var(--keycap); border: var(--bw) solid var(--bc); }
+  .pk.is-iso-enter::before { inset: 0 0 auto 0; height: var(--kh); border-radius: 7px 7px 0 7px; }
+  .pk.is-iso-enter::after { top: calc(var(--kh) - var(--bw)); left: var(--q); right: 0; bottom: 0; border-top: 0; border-radius: 0 0 7px 7px; }
+  .pk.is-iso-enter:hover { --bc: var(--accent); }
+  .pk.is-iso-enter:active { --bc: var(--accent); }
+  .pk.is-iso-enter:active::before, .pk.is-iso-enter:active::after { background: var(--surface-selected); }
+  .pk.is-iso-enter:focus-visible { outline: none; --bw: 3px; --bc: var(--accent); }
+  .pk.is-iso-enter .nk-text { position: relative; z-index: 1; height: var(--kh); display: grid; place-items: center; }
+
+  /* Medium: the main block alone sets the width; the navigation cluster becomes a strip under its right end. */
+  @container (600px <= width < 814px) {
+    .pk-keys {
+      --P: min(54px, calc(100cqi / 15));
+      grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main main" "hint nav";
+      column-gap: var(--space-5); row-gap: calc(var(--P) * 0.4);
+    }
+    .pk-nav { grid-template-columns: repeat(40, var(--q)); grid-template-rows: repeat(2, var(--kh)); }
+    .pk-nav .kb-key { grid-column: var(--xm) / span 4; grid-row: var(--rm); }
+  }
+  /* Narrow: split into the Kyria's halves, right half under the left, then the navigation cluster. */
+  @container (width < 600px) {
+    .pk-scroll { overflow-x: auto; }
+    .pk-keys {
+      --P: clamp(38px, calc(100cqi / 8.5), 52px);
+      grid-template-columns: auto; grid-template-areas: "main" "nav" "hint";
+      row-gap: calc(var(--P) * 0.5);
+    }
+    .pk-main { grid-template-columns: repeat(34, var(--q)); grid-template-rows: var(--rows) calc(var(--P) * 0.5 - var(--g)) var(--rows); }
+    .pk-nav { grid-template-columns: repeat(26, var(--q)); grid-template-rows: repeat(3, var(--kh)); justify-self: end; }
+    .pk-hint { max-width: 100cqi; }
+    .kb-key { grid-column: var(--xs) / span var(--ws, var(--w, 4)); grid-row: var(--rs) / span var(--h, 1); }
+  }
   .results { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
   .result {
     display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);
@@ -384,5 +429,7 @@
   .key .sel { stroke: Highlight; }
   .key text { fill: CanvasText; }
   .pk, .well, .action, .result, .entry, .layer-tab { border: 1px solid CanvasText; }
+  .pk.is-iso-enter { border: 0; --bc: CanvasText; }
+  .pk.is-iso-enter:focus-visible { --bc: Highlight; }
   .entry.is-current, .rail-link.is-current, .layer-tab[aria-selected="true"] { outline: 2px solid Highlight; }
 }
