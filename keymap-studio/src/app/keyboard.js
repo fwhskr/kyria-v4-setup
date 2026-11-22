@@ -47,8 +47,13 @@
         return {label: place, full: `${names.layerName(item.layer)}, ${lowerFirst(place)}`, from: describe(item.from), to: describe(item.to)};
       }
       case 'encoder': {
+        // wire.diff gives an encoder pair as "clockwise, counter-clockwise".
+        const pair = v => {
+          const parts = typeof v === 'string' ? v.split(', ') : [];
+          return parts.length === 2 ? `CW ${describe(parts[0])}, CCW ${describe(parts[1])}` : describe(v);
+        };
         const place = names.encoderName(item.index);
-        return {label: place, full: `${names.layerName(item.layer)}, ${lowerFirst(place)}`, from: describe(item.from), to: describe(item.to)};
+        return {label: place, full: `${names.layerName(item.layer)}, ${lowerFirst(place)}`, from: pair(item.from), to: pair(item.to)};
       }
       case 'macro': return Object.assign({label: `Macro M${index}`}, plain);
       case 'tap_dance': return Object.assign({label: `Tap dance ${index}`}, plain);

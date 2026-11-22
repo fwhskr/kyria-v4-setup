@@ -234,6 +234,13 @@ describe('board text for unwritten changes', () => {
     assert.equal(A.board.pendingText({ from: 'KC_A', to: 'KC_B' }).label, '. Not on the keyboard yet. On the keyboard: a (KC_A)');
   });
 
+  it('names both directions of an encoder pair with their legends', () => {
+    const l = K.itemLabel({ kind: 'encoder', layer: 0, index: 0, from: 'KC_VOLD, KC_VOLU', to: 'KC_VOLD, KC_MUTE' }, names());
+    assert.equal(l.from, `CW ${K.shortLegend(A.state.legendFor('KC_VOLD'), 'KC_VOLD')}, CCW ${K.shortLegend(A.state.legendFor('KC_VOLU'), 'KC_VOLU')}`);
+    assert.doesNotMatch(l.to, /KC_/);
+    assert.equal(K.itemLabel({ kind: 'encoder', layer: 0, index: 0, from: 'KC_VOLD', to: 'KC_MUTE' }, names()).from, K.shortLegend(A.state.legendFor('KC_VOLD'), 'KC_VOLD'));
+  });
+
   it('counts this layer, all layers and changes off the board in one line', () => {
     const P = (layers, kinds) => ({ layers, items: kinds.map((kind) => ({ kind })) });
     assert.equal(A.board.legendText(P([2, 0, 1], ['key', 'key', 'key']), 0), 'Marked keys aren\u2019t on the keyboard yet: 2 on this layer, 3 on all layers.');
